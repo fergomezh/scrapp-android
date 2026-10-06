@@ -31,8 +31,12 @@ pero el login y el registro no funcionarán.
 
 | Rol | Correo | Contraseña |
 |---|---|---|
-| Administrador | _pendiente_ | _pendiente_ |
-| Operativo | _pendiente_ | _pendiente_ |
+| Administrador | `admin@scrapp.test` | `admin123` |
+| Operativo | `operativo@scrapp.test` | `operativo123` |
+
+Son cuentas solo de prueba del proyecto Firebase `scrapp-ctrlcafe`. Los usuarios que se registren
+desde la app entran como Operativo; para volver administrador a alguien, cambiá su campo `rol` a
+`ADMINISTRADOR` en Firestore (`usuarios/{uid}`).
 
 ## Arquitectura (MVC)
 

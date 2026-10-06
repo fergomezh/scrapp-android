@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El tema real vive en ui/theme (Compose); este solo cubre la ventana mientras arranca. -->
+    <style name="Theme.Scrapp" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// Reglas de Scrapp (fuera de modo test, compromiso del punto 8 de la Etapa 1).
+// Publicar desde Firebase Console > Firestore > Reglas, o con `firebase deploy --only firestore:rules`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function esAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && perfil().rol == 'ADMINISTRADOR'
+        && perfil().activo == true;
+    }
+
+    match /usuarios/{uid} {
+      // Cada usuario lee su propio documento; el admin lee todos.
+      allow read: if autenticado() && (request.auth.uid == uid || esAdmin());
+
+      // Registro: solo el propio usuario, siempre como OPERATIVO y activo.
+      allow create: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombre', 'correo', 'rol', 'activo'])
+        && request.resource.data.rol == 'OPERATIVO'
+        && request.resource.data.activo == true;
+
+      // El usuario puede cambiar su nombre; rol y activo solo los cambia el admin.
+      allow update: if esAdmin()
+        || (autenticado()
+            && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre']));
+
+      allow delete: if esAdmin();
+    }
+
+    // Colecciones de negocio (se usan desde el Avance 2).
+    match /productos/{id} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+    match /lotes/{id} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+    match /ventas/{id} {
+      allow read: if autenticado();
+      allow write: if esAdmin();
+    }
+    match /mermas/{id} {
+      allow read: if autenticado();
+      // Cualquier usuario activo registra mermas a su nombre; editar o borrar es de admin.
+      allow create: if autenticado()
+        && perfil().activo == true
+        && request.resource.data.usuarioId == request.auth.uid;
+      allow update, delete: if esAdmin();
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183827593395",
+    "project_id": "scrapp-ctrlcafe",
+    "storage_bucket": "scrapp-ctrlcafe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183827593395:android:bede42b041039a139ed8c6",
+        "android_client_info": {
+          "package_name": "com.ctrlcafe.scrapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrOgdMkRkQic5b3diS6pKQGEYQrcxAfA8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

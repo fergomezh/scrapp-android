@@ -1,109 +1,67 @@
-# Scrapp — Control de mermas (Android)
+# Scrapp - Control de Mermas
 
-App Android con Jetpack Compose para el control de mermas de CTRL+CAFE.
-DSM941 G01T · Etapa 3, Avance 1 · Grupo CTRL+CAFE.
+Proyecto Kotlin/JVM para el control de mermas de CTRL+CAFE.
 
-La versión de consola (Etapa 2) está en [fergomezh/mermas-scrapp](https://github.com/fergomezh/mermas-scrapp).
+## Ejecución en IntelliJ IDEA
 
-## Integrantes
-
-- Victor Emmanuel Velasco Martínez — VM251307
-- Fernando José Gómez Hernández — GH251230
-- José Eduardo Aquino Medrano — AM252078
-- William Eduardo Montano Aguilar — MA251192
-
-## Requisitos
-
-- Android Studio (versión estable reciente) con JDK 17 o superior
-- Android SDK 36
-- Dispositivo o emulador con Android 8.0 (API 26) o superior
-
-## Cómo compilar
-
-1. Clonar el repositorio y abrir la carpeta raíz en Android Studio.
-2. Verificar que exista `app/google-services.json` (se sube al repositorio para que el proyecto compile sin pasos extra).
-3. Esperar la sincronización de Gradle y ejecutar la configuración `app`.
-
-Si falta `app/google-services.json`, el proyecto igual sincroniza (Gradle muestra una advertencia),
-pero el login y el registro no funcionarán.
+1. Abrir el proyecto como proyecto Gradle.
+2. Esperar la sincronización de Gradle.
+3. Ejecutar `MainKt` o la tarea Gradle `run`.
+4. La aplicación inicia en consola.
 
 ## Credenciales de prueba
 
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Administrador | `admin@scrapp.test` | `admin123` |
-| Operativo | `operativo@scrapp.test` | `operativo123` |
+- Administrador: `admin` / `admin123`
+- Operativo: `barista` / `barista123`
 
-Son cuentas solo de prueba del proyecto Firebase `scrapp-ctrlcafe`. Los usuarios que se registren
-desde la app entran como Operativo; para volver administrador a alguien, cambiá su campo `rol` a
-`ADMINISTRADOR` en Firestore (`usuarios/{uid}`).
+## Funcionalidades
 
-## Arquitectura (MVC)
+| Opción | Operativo | Administrador |
+|---|:---:|:---:|
+| Ver productos | ✔ | ✔ |
+| Monitor de lotes con semáforo de caducidad | ✔ | ✔ |
+| Ver mermas registradas | ✔ | ✔ |
+| Registrar merma | ✔ | ✔ |
+| Resumen / reporte | | ✔ |
 
-```
-app/src/main/java/com/ctrlcafe/scrapp/
-├── MainActivity.kt / ScrappApp.kt
-├── modelo/        Entidades (Etapa 2) + PerfilUsuario y Rol
-├── repositorio/   Repositorios en memoria (Etapa 2), AuthRepositorio (Firebase), ContenedorDatos
-├── servicio/      Motores de la Etapa 2: semáforo, financiero, proyección y orquestador
-├── controlador/   ViewModels que exponen el estado con StateFlow
-├── vista/         Pantallas Compose: auth, produccion, lotes, mermas, gerencia, componentes, navegacion
-├── ui/theme/      Tema Material 3
-└── util/          Validador, Excepciones, Logger
-```
+### Registro de mermas
 
-- **Modelo** (`modelo/`, `repositorio/`, `servicio/`): Kotlin puro, migrado de la Etapa 2 sin cambios. No conoce la interfaz.
-- **Controlador** (`controlador/`): cada pantalla tiene un `ViewModel` que valida, llama a los motores y expone el estado con `StateFlow`.
-- **Vista** (`vista/`): funciones `@Composable` que solo observan el estado y envían eventos al ViewModel.
+1. Se elige el lote de una lista ordenada por urgencia; los vencidos aparecen primero.
+2. Se indican la cantidad, la causa y, opcionalmente, la evidencia.
+3. Tras confirmar, `MermaController` congela el costo unitario y descuenta el stock del lote.
+4. `OrquestadorMerma` recalcula y la consola muestra el antes y el después: stock y estado del lote,
+   pérdida del día, tasa de merma y producción sugerida para mañana.
 
-### Capa de datos
+Editar o eliminar una merma desde `MermaController` ajusta el stock del lote por la diferencia.
 
-`ContenedorDatos` es el equivalente del cableado que hacía `Main.kt` en consola: crea una sola vez
-los repositorios, carga `DatosIniciales` e instancia los motores. Todos los ViewModels usan las mismas
-instancias, así que registrar una merma se refleja de inmediato en el monitor de lotes y en el panel de gerencia.
+### Semáforo de caducidad
 
-```kotlin
-class LoteViewModel(
-    private val semaforo: MotorSemaforo = ContenedorDatos.semaforo
-) : ViewModel()
-```
+Lo calcula `MotorSemaforo` con las horas restantes hasta el final del día de caducidad:
+VERDE (más de 72 h), AMARILLO (24 a 72 h), ROJO (0 a 24 h) y NEGRO (vencido).
 
-En este avance los datos de negocio siguen en memoria; la migración a Firestore queda para el Avance 2.
+### Resumen / reporte
 
-### Autenticación
+Cubre los últimos 30 días: pérdida y costo de producción del periodo, índice de merma,
+top 5 de productos críticos y producción sugerida para el día siguiente por producto.
+Se exporta a `reportes/resumen_AAAA-MM-DD.txt`.
 
-`AuthRepositorio` (en `ContenedorDatos.authRepositorio`) ofrece:
+## Estructura
 
-| Función | Devuelve |
-|---|---|
-| `suspend iniciarSesion(correo, contrasena)` | `Result<PerfilUsuario>` |
-| `suspend registrar(nombre, correo, contrasena)` | `Result<PerfilUsuario>` (siempre rol `OPERATIVO`) |
-| `cerrarSesion()` | — |
-| `usuarioActual` / `haySesion` | `FirebaseUser?` / `Boolean` |
-| `suspend obtenerRol(uid)` | `Result<Rol>` |
-| `suspend obtenerPerfil(uid)` / `perfilActual()` | `Result<PerfilUsuario>` / `Result<PerfilUsuario?>` |
+- `modelo/`: entidades y reglas de dominio.
+- `repositorio/`: colecciones en memoria y datos iniciales.
+- `controlador/`: autenticación, permisos por rol y gestión de productos, lotes y mermas.
+- `servicio/`: motores de semáforo, financiero y proyección, y el orquestador de recálculo.
+- `vista/`: interfaz de consola.
+- `util/`: validaciones, excepciones y registro de errores.
 
-Cuando una operación falla, la excepción es una `ScrappException` con el mensaje en español listo para
-mostrar (`CredencialesInvalidasException`, `SinConexionException`, `UsuarioDesactivadoException`,
-`CorreoEnUsoException`, etc.):
+Los datos viven en memoria: al cerrar la aplicación se pierden. Los errores se registran en `logs/errores.log`.
 
-```kotlin
-viewModelScope.launch {
-    authRepositorio.iniciarSesion(correo, contrasena)
-        .onSuccess { perfil -> _estado.value = EstadoLogin.Exito(perfil.rol) }
-        .onFailure { e -> _estado.value = EstadoLogin.Error(e.message ?: "Error desconocido") }
-}
-```
+## Integrante 4
 
-Cada usuario tiene su documento en Firestore `usuarios/{uid}`, con los campos `nombre`, `correo`, `rol`
-(`OPERATIVO` | `ADMINISTRADOR`) y `activo`.
-
-### Reglas de Firestore
-
-Están en [`firestore.rules`](firestore.rules) (fuera de modo test): cada usuario lee su propio documento,
-el registro solo puede crear perfiles `OPERATIVO` y únicamente un administrador cambia `rol` o `activo`.
-
-### Logger
-
-`Logger` escribe en Logcat (etiqueta `Scrapp`) y en `filesDir/logs/errores.log`, que se puede revisar
-desde **Device Explorer** en `/data/data/com.ctrlcafe.scrapp/files/logs/`.
+La rama `feat/consola` contiene la base de la interfaz de consola:
+- Login y navegación por rol.
+- Menús separados para Administrador y Operativo.
+- Tablas ASCII y formato de moneda/fechas.
+- Monitor de lotes con semáforo textual.
+- Resumen y exportación a `reportes/resumen_AAAA-MM-DD.txt`.
+- Validación segura de entradas.

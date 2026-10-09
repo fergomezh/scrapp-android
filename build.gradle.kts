@@ -1,6 +1,24 @@
-// Archivo de nivel superior: solo declara los plugins; cada módulo los aplica.
 plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.compose) apply false
-    alias(libs.plugins.google.services) apply false
+    kotlin("jvm") version "1.9.23" // O la versión que tengas definida
+    application
+}
+
+group = "com.ctrlcafe.scrapp"
+version = "1.0-SNAPSHOT"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation(kotlin("test"))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+application {
+    mainClass.set("com.ctrlcafe.scrapp.MainKt")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

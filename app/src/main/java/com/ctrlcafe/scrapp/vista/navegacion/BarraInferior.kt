@@ -30,16 +30,24 @@ fun BarraInferior(navController: NavHostController, esAdministrador: Boolean) {
                 selected = currentRoute == item.route,
                 onClick = {
                     if (currentRoute != item.route) {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navegarAPestana(navController, item.route)
                     }
                 }
             )
         }
+    }
+}
+
+/**
+ * Cambia de pestaña sin apilar pantallas. La raíz es Producción y no el destino
+ * inicial (Splash), porque el Splash ya se sacó del historial al ir al Login.
+ */
+fun navegarAPestana(navController: NavHostController, ruta: String) {
+    navController.navigate(ruta) {
+        popUpTo(RutasBottom.Produccion.route) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }

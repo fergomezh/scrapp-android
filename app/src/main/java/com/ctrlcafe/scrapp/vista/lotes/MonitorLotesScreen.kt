@@ -66,14 +66,26 @@ import java.util.Locale
 /**
  * Pantalla de Monitor de Lotes (Integrante 3).
  *
- * Muestra los lotes en una [LazyColumn] ordenada por urgencia con su chip de semáforo
- * (Verde, Amarillo, Rojo, Vencido) y horas restantes, filtro por estado y acción
- * "Registrar merma" en lotes vencidos.
+ * =========================================================================================
+ * GUÍA DE INTEGRACIÓN PARA EL COORDINADOR / INTEGRANTE 4 (Navegación y Componentes UI)
+ * =========================================================================================
+ * 1. Conexión en `ScrappNavHost.kt`:
+ *    - `DashboardScreen(onIrAMonitorLotes = { navController.navigate(...) })`
+ *    - `MonitorLotesScreen(`
+ *          `onRegistrarMerma = { productoId -> navController.navigate("mermas/$productoId") },`
+ *          `onIrAIngresoLote = { navController.navigate("ingreso_lote") }`
+ *      `)`
+ *    - `IngresoLoteScreen(onVolver = { navController.popBackStack() })`
  *
- * @param onRegistrarMerma Callback que navega al formulario de registro de merma (Integrante 2)
- *                         recibiendo el `productoId` ya preseleccionado.
- * @param onIrAIngresoLote Callback que navega a la pantalla `IngresoLoteScreen`.
+ * 2. Componentes reutilizables (`vista/componentes/`):
+ *    Como la rama `feat/ui-navegacion` aún no estaba fusionada en el momento del desarrollo,
+ *    esta pantalla y `DashboardScreen` / `IngresoLoteScreen` incluyen equivalentes privados
+ *    locales (`ChipSemaforoLocal`, `TarjetaLoteLocal`, `EstadoVacioLotesLocal`,
+ *    `ScrappTextFieldLocal`, `BotonPrimarioLocal`) marcados con `// TODO [Integración I4]`
+ *    para que el proyecto compile sin errores de forma autónoma.
+ * =========================================================================================
  */
+
 @Composable
 fun MonitorLotesScreen(
     modifier: Modifier = Modifier,

@@ -9,7 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @Composable
-fun BarraInferior(navController: NavHostController, rolUsuario: String) {
+fun BarraInferior(navController: NavHostController, esAdministrador: Boolean) {
     val itemsBase = listOf(
         RutasBottom.Produccion,
         RutasBottom.Lotes,
@@ -17,7 +17,7 @@ fun BarraInferior(navController: NavHostController, rolUsuario: String) {
     )
 
     // Agrega Gerencia solo si el rol del usuario es Administrador
-    val itemsMenu = if (rolUsuario == "Admin") itemsBase + RutasBottom.Gerencia else itemsBase
+    val itemsMenu = if (esAdministrador) itemsBase + RutasBottom.Gerencia else itemsBase
 
     NavigationBar {
         val navBackStackEntry = navController.currentBackStackEntryAsState()

@@ -14,14 +14,14 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.ctrlcafe.scrapp.modelo.Usuario
+import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
 import kotlinx.coroutines.delay
 
 @Composable
 fun ScrappNavHost(
     navController: NavHostController,
-    usuarioActual: Usuario?,
+    usuarioActual: PerfilUsuario?,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -74,15 +74,18 @@ fun ScrappNavHost(
 
         // --- PANTALLA PROTEGIDA POR ROL (SOLO ADMINISTRADOR) ---
         composable(RutasBottom.Gerencia.route) {
-            // Filtro de seguridad estratégico por correo corporativo o rol enum
-            val esAdmin = usuarioActual?.correo == "admin@scrapp.com" || usuarioActual?.perfil?.name == "ADMINISTRADOR"
+            // Filtro de seguridad por el rol guardado en Firestore
+            val esAdmin = usuarioActual?.esAdministrador == true
 
             if (esAdmin) {
                 PanelGerenciaScreen(navController = navController)
             } else {
-                // Redirección forzada inmediata si un rol operativo intenta saltarse la UI
-                navController.navigate(RutasBottom.Produccion.route) {
-                    popUpTo(RutasBottom.Produccion.route) { inclusive = true }
+                // Redirección si un rol operativo intenta saltarse la UI.
+                // Va en LaunchedEffect: navegar durante la composición provoca recomposiciones en bucle.
+                LaunchedEffect(Unit) {
+                    navController.navigate(RutasBottom.Produccion.route) {
+                        popUpTo(RutasBottom.Gerencia.route) { inclusive = true }
+                    }
                 }
             }
         }

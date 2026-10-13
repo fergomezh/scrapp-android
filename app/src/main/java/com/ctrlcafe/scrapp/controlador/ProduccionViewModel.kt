@@ -137,13 +137,23 @@ class ProduccionViewModel(
 }
 
 /**
- * Contenedor de respaldo en memoria compartido entre ProduccionViewModel y LoteViewModel.
+ * =========================================================================================
+ * GUÍA DE INTEGRACIÓN PARA EL COORDINADOR (Rama: feat/modulo-principal -> develop)
+ * =========================================================================================
+ * 1. Capa de Datos (Integrante 1):
+ *    Este objeto [ProveedorDependenciasModuloPrincipal] instancia en memoria los repositorios
+ *    y ejecuta [DatosIniciales.cargar] como respaldo autónomo para que el módulo de Producción
+ *    y Lotes funcione y compile de forma independiente.
  *
- * TODO [Integración Coordinador / I1 / I4]:
- * Si en ScrappApp o MainActivity se define un contenedor global único para los 4 integrantes,
- * basta con pasar esas instancias en ProduccionViewModel.provideFactory(...) y
- * LoteViewModel.provideFactory(...), o apuntar estas propiedades a ese contenedor global.
+ * 2. Cómo unificar el estado con MermaViewModel (Integrante 2) y GerenciaViewModel (Integrante 4):
+ *    Para que el descuento de lotes en [OrquestadorMerma] se refleje en [LoteViewModel] y
+ *    [ProduccionViewModel], pase las instancias globales compartidas de los repositorios y motores
+ *    usando [ProduccionViewModel.provideFactory] y [LoteViewModel.provideFactory] dentro de
+ *    `ScrappNavHost.kt`, o reemplace las propiedades de este objeto por las referencias del
+ *    contenedor global de la aplicación.
+ * =========================================================================================
  */
+
 internal object ProveedorDependenciasModuloPrincipal {
     val usuarioRepositorio = UsuarioRepositorio()
     val productoRepositorio = ProductoRepositorio()

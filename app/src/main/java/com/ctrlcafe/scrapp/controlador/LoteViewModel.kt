@@ -327,10 +327,19 @@ class LoteViewModel(
         }
     }
 
+// =========================================================================
+    // GUÍA DE INTEGRACIÓN PARA EL COORDINADOR — VALIDACIONES (Integrante 2)
     // =========================================================================
-    // Funciones auxiliares y validaciones de formulario
-    // TODO [Integración I2]: Cuando Integrante 2 suba `util/Validador.kt`, se pueden
-    // delegar estas 4 funciones de validación a `Validador` si el coordinador lo desea.
+    // Como `util/Validador.kt` (rama feat/auth) aún no estaba fusionado al momento
+    // de desarrollar este módulo, se implementaron estas 4 validaciones puras locales
+    // para garantizar que `IngresoLoteScreen` valide todos los campos sin errores:
+    //   1. validarCampoObligatorio(valor, mensaje)  -> Validador: campo obligatorio
+    //   2. validarNumeroPositivoDecimal(valor, ...) -> Validador: número positivo (Double)
+    //   3. validarEnteroPositivo(valor, ...)        -> Validador: número positivo (Int)
+    //   4. validarFechaNoFutura(valor)              -> Validador: fecha no futura
+    //
+    // Al fusionar `feat/auth` en `develop`, puede mantener estas funciones o delegar
+    // su cuerpo directamente a los métodos de `com.ctrlcafe.scrapp.util.Validador`.
     // =========================================================================
 
     private fun calcularFechaCaducidadPrevia(fechaTexto: String, vidaUtilTexto: String): LocalDate? {

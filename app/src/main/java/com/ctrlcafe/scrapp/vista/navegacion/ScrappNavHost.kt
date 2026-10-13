@@ -11,16 +11,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.ctrlcafe.scrapp.controlador.AuthViewModel
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
+import com.ctrlcafe.scrapp.vista.auth.LoginScreen
+import com.ctrlcafe.scrapp.vista.auth.RegistroScreen
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
+import com.ctrlcafe.scrapp.vista.lotes.IngresoLoteScreen
+import com.ctrlcafe.scrapp.vista.lotes.MonitorLotesScreen
+import com.ctrlcafe.scrapp.vista.mermas.RegistroMermaScreen
+import com.ctrlcafe.scrapp.vista.produccion.DashboardScreen
 import kotlinx.coroutines.delay
 
 @Composable
 fun ScrappNavHost(
     navController: NavHostController,
+    authViewModel: AuthViewModel,
     usuarioActual: PerfilUsuario?,
     modifier: Modifier = Modifier
 ) {
@@ -56,20 +67,64 @@ fun ScrappNavHost(
         }
 
         // --- DESTINOS DEFINITIVOS DE LA APLICACIÓN ---
+        // Si Firebase ya tiene una sesión guardada, LoginScreen salta directo a Producción
         composable(Rutas.Login.route) {
-            // Aquí tu equipo integrará la LoginScreen() del Avance 1
+            LoginScreen(
+                viewModel = authViewModel,
+                onLoginExitoso = { irAInicio(navController) },
+                onIrARegistro = {
+                    authViewModel.limpiarError()
+                    navController.navigate(Rutas.Registro.route)
+                }
+            )
+        }
+
+        composable(Rutas.Registro.route) {
+            RegistroScreen(
+                viewModel = authViewModel,
+                onRegistroExitoso = { irAInicio(navController) },
+                onVolverALogin = {
+                    authViewModel.limpiarError()
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable(RutasBottom.Produccion.route) {
-            // Aquí el Integrante 1 conectará su PantallaProduccionScreen()
+            DashboardScreen(
+                onIrAMonitorLotes = { navegarAPestana(navController, RutasBottom.Lotes.route) }
+            )
         }
 
         composable(RutasBottom.Lotes.route) {
-            // Aquí el Integrante 2 conectará su PantallaLotesScreen()
+            MonitorLotesScreen(
+                onRegistrarMerma = { productoId ->
+                    navController.navigate(Rutas.RegistroMerma.conProducto(productoId))
+                },
+                onIrAIngresoLote = { navController.navigate(Rutas.IngresoLote.route) }
+            )
+        }
+
+        composable(Rutas.IngresoLote.route) {
+            IngresoLoteScreen(onVolver = { navController.popBackStack() })
         }
 
         composable(RutasBottom.Mermas.route) {
-            // Aquí el Integrante 3 conectará su PantallaMermasScreen()
+            RegistroMermaScreen(
+                viewModel = viewModel(),
+                usuarioId = usuarioActual?.uid.orEmpty()
+            )
+        }
+
+        composable(
+            route = Rutas.RegistroMerma.route,
+            arguments = listOf(navArgument(Rutas.RegistroMerma.ARG_PRODUCTO_ID) { type = NavType.StringType })
+        ) { entrada ->
+            RegistroMermaScreen(
+                viewModel = viewModel(),
+                usuarioId = usuarioActual?.uid.orEmpty(),
+                productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID)
+            )
         }
 
         // --- PANTALLA PROTEGIDA POR ROL (SOLO ADMINISTRADOR) ---
@@ -89,5 +144,13 @@ fun ScrappNavHost(
                 }
             }
         }
+    }
+}
+
+/** Tras iniciar sesión o registrarse: va a Producción y saca Login/Registro del historial. */
+private fun irAInicio(navController: NavHostController) {
+    navController.navigate(RutasBottom.Produccion.route) {
+        popUpTo(Rutas.Login.route) { inclusive = true }
+        launchSingleTop = true
     }
 }

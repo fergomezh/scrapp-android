@@ -26,7 +26,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,8 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -44,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -54,6 +50,9 @@ import com.ctrlcafe.scrapp.controlador.ProduccionUiState
 import com.ctrlcafe.scrapp.controlador.ProduccionViewModel
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.servicio.ProyeccionProducto
+import com.ctrlcafe.scrapp.vista.componentes.BotonCerrarSesion
+import com.ctrlcafe.scrapp.vista.componentes.EstadoVacio
+import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -69,7 +68,8 @@ import kotlin.math.roundToInt
 fun DashboardScreen(
     modifier: Modifier = Modifier,
     viewModel: ProduccionViewModel = viewModel(factory = ProduccionViewModel.provideFactory()),
-    onIrAMonitorLotes: (() -> Unit)? = null
+    onIrAMonitorLotes: (() -> Unit)? = null,
+    onCerrarSesion: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -92,40 +92,28 @@ fun DashboardScreen(
         onRefrescar = { viewModel.cargarProyecciones() },
         onAlternarFiltroHistorial = { viewModel.alternarFiltroSinHistorial() },
         onIrAMonitorLotes = onIrAMonitorLotes,
+        onCerrarSesion = onCerrarSesion,
         modifier = modifier
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
     uiState: ProduccionUiState,
     onRefrescar: () -> Unit,
     onAlternarFiltroHistorial: () -> Unit,
     modifier: Modifier = Modifier,
-    onIrAMonitorLotes: (() -> Unit)? = null
+    onIrAMonitorLotes: (() -> Unit)? = null,
+    onCerrarSesion: (() -> Unit)? = null
 ) {
     val formatoFecha = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es", "SV"))
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            // TODO [Integración I4]: Reemplazar por TopBarScrapp cuando esté en vista/componentes/
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Dashboard de Producción",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Proyección para ${uiState.fechaObjetivo.format(formatoFecha)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            TopBarScrapp(
+                title = "Dashboard de Producción",
+                subtitle = "Proyección para ${uiState.fechaObjetivo.format(formatoFecha)}",
                 actions = {
                     if (onIrAMonitorLotes != null) {
                         IconButton(onClick = onIrAMonitorLotes) {
@@ -141,10 +129,10 @@ fun DashboardContent(
                             contentDescription = "Recalcular proyecciones"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    if (onCerrarSesion != null) {
+                        BotonCerrarSesion(onCerrarSesion = onCerrarSesion)
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -161,18 +149,12 @@ fun DashboardContent(
             }
 
             uiState.mensajeError != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    EstadoVacioLocal(
-                        titulo = "Error al cargar la proyección",
-                        descripcion = uiState.mensajeError
-                    )
-                }
+                EstadoVacio(
+                    titulo = "Error al cargar la proyección",
+                    mensaje = uiState.mensajeError,
+                    icono = Icons.Default.Info,
+                    modifier = Modifier.padding(innerPadding)
+                )
             }
 
             uiState.sinHistorialSuficiente || uiState.proyeccionesVisibles.isEmpty() -> {
@@ -187,16 +169,11 @@ fun DashboardContent(
                         onAlternarFiltroHistorial = onAlternarFiltroHistorial
                     )
                     Spacer(modifier = Modifier.height(24.dp))
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // TODO [Integración I4]: Reemplazar por EstadoVacio cuando esté en vista/componentes/
-                        EstadoVacioLocal(
-                            titulo = "Sin historial suficiente",
-                            descripcion = "No hay registros de ventas en las últimas 4 semanas equivalentes para calcular la producción sugerida de hoy."
-                        )
-                    }
+                    EstadoVacio(
+                        titulo = "Sin historial suficiente",
+                        mensaje = "No hay registros de ventas en las últimas 4 semanas equivalentes para calcular la producción sugerida de hoy.",
+                        icono = Icons.Default.Info
+                    )
                 }
             }
 
@@ -220,7 +197,8 @@ fun DashboardContent(
                         key = { it.productoId }
                     ) { proyeccion ->
                         val producto = uiState.productosPorId[proyeccion.productoId]
-                        // TODO [Integración I4]: Reemplazar por TarjetaProducto cuando esté en vista/componentes/
+                        // Tarjeta propia: TarjetaProducto (componentes) solo muestra nombre y cantidad,
+                        // y aquí se necesitan demanda base, margen y tasa de merma.
                         TarjetaProductoProyeccion(
                             proyeccion = proyeccion,
                             producto = producto
@@ -464,40 +442,6 @@ private fun MetricaProyeccionItem(
             text = valor,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-@Composable
-private fun EstadoVacioLocal(
-    titulo: String,
-    descripcion: String,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.Info,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = titulo,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = descripcion,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
         )
     }
 }

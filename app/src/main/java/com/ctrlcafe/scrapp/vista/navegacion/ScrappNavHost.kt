@@ -35,6 +35,14 @@ fun ScrappNavHost(
     usuarioActual: PerfilUsuario?,
     modifier: Modifier = Modifier
 ) {
+    // Cierra la sesión y vacía el historial para que "atrás" no regrese a pantallas protegidas
+    val cerrarSesion: () -> Unit = {
+        authViewModel.cerrarSesion()
+        navController.navigate(Rutas.Login.route) {
+            popUpTo(navController.graph.id) { inclusive = true }
+        }
+    }
+
     NavHost(
         navController = navController,
         // Arranca en el Splash nativo de Compose de forma limpia
@@ -92,7 +100,8 @@ fun ScrappNavHost(
 
         composable(RutasBottom.Produccion.route) {
             DashboardScreen(
-                onIrAMonitorLotes = { navegarAPestana(navController, RutasBottom.Lotes.route) }
+                onIrAMonitorLotes = { navegarAPestana(navController, RutasBottom.Lotes.route) },
+                onCerrarSesion = cerrarSesion
             )
         }
 
@@ -123,7 +132,8 @@ fun ScrappNavHost(
             RegistroMermaScreen(
                 viewModel = viewModel(),
                 usuarioId = usuarioActual?.uid.orEmpty(),
-                productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID)
+                productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID),
+                onVolver = { navController.popBackStack() }
             )
         }
 
@@ -133,7 +143,7 @@ fun ScrappNavHost(
             val esAdmin = usuarioActual?.esAdministrador == true
 
             if (esAdmin) {
-                PanelGerenciaScreen(navController = navController)
+                PanelGerenciaScreen(navController = navController, onCerrarSesion = cerrarSesion)
             } else {
                 // Redirección si un rol operativo intenta saltarse la UI.
                 // Va en LaunchedEffect: navegar durante la composición provoca recomposiciones en bucle.

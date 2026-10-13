@@ -30,6 +30,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,7 +38,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +57,7 @@ import com.ctrlcafe.scrapp.modelo.CausaMerma
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.util.Validador
+import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +67,8 @@ fun RegistroMermaScreen(
     usuarioId: String,
     productoPreseleccionadoId: String? = null,
     onRegistroCompletado: () -> Unit = {},
+    // Si no es null se muestra la flecha de regreso (cuando se abre desde el Monitor de Lotes)
+    onVolver: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val estadoUi by viewModel.estadoUi.collectAsState()
@@ -106,7 +109,11 @@ fun RegistroMermaScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Registrar Merma") })
+            TopBarScrapp(
+                title = "Registrar Merma",
+                showBackButton = onVolver != null,
+                onBackClick = { onVolver?.invoke() }
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
@@ -174,7 +181,7 @@ fun RegistroMermaScreen(
                         label = { Text("Producto") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandirProductos) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
                     )
                     ExposedDropdownMenu(
@@ -213,7 +220,7 @@ fun RegistroMermaScreen(
                             }
                         },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
                     )
                     ExposedDropdownMenu(
@@ -261,7 +268,7 @@ fun RegistroMermaScreen(
                         label = { Text("Causa de merma") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandirCausas) },
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
                     )
                     ExposedDropdownMenu(

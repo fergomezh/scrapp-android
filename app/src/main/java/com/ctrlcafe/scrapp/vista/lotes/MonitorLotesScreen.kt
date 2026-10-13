@@ -18,8 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ReportProblem
@@ -37,19 +35,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -60,6 +53,9 @@ import com.ctrlcafe.scrapp.controlador.LoteUiState
 import com.ctrlcafe.scrapp.controlador.LoteViewModel
 import com.ctrlcafe.scrapp.modelo.EstadoCaducidad
 import com.ctrlcafe.scrapp.servicio.EstadoLote
+import com.ctrlcafe.scrapp.vista.componentes.ChipSemaforo
+import com.ctrlcafe.scrapp.vista.componentes.EstadoVacio
+import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -78,11 +74,9 @@ import java.util.Locale
  *    - `IngresoLoteScreen(onVolver = { navController.popBackStack() })`
  *
  * 2. Componentes reutilizables (`vista/componentes/`):
- *    Como la rama `feat/ui-navegacion` aún no estaba fusionada en el momento del desarrollo,
- *    esta pantalla y `DashboardScreen` / `IngresoLoteScreen` incluyen equivalentes privados
- *    locales (`ChipSemaforoLocal`, `TarjetaLoteLocal`, `EstadoVacioLotesLocal`,
- *    `ScrappTextFieldLocal`, `BotonPrimarioLocal`) marcados con `// TODO [Integración I4]`
- *    para que el proyecto compile sin errores de forma autónoma.
+ *    Esta pantalla, `DashboardScreen` e `IngresoLoteScreen` usan `TopBarScrapp`, `ChipSemaforo`,
+ *    `EstadoVacio`, `ScrappTextField` y `BotonPrimario`. Las tarjetas (`TarjetaLote`,
+ *    `TarjetaProductoProyeccion`) siguen siendo propias porque muestran datos específicos.
  * =========================================================================================
  */
 
@@ -132,22 +126,9 @@ fun MonitorLotesContent(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            // TODO [Integración I4]: Reemplazar por TopBarScrapp cuando esté en vista/componentes/
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Monitor de Lotes",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${uiState.lotes.size} lotes activos ordenados por urgencia",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            TopBarScrapp(
+                title = "Monitor de Lotes",
+                subtitle = "${uiState.lotes.size} lotes activos ordenados por urgencia",
                 actions = {
                     IconButton(onClick = onRefrescar) {
                         Icon(
@@ -155,10 +136,7 @@ fun MonitorLotesContent(
                             contentDescription = "Recalcular semáforo"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         },
         floatingActionButton = {
@@ -197,36 +175,23 @@ fun MonitorLotesContent(
                 }
 
                 uiState.mensajeError != null -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        EstadoVacioLotesLocal(
-                            titulo = "Error al cargar los lotes",
-                            descripcion = uiState.mensajeError
-                        )
-                    }
+                    EstadoVacio(
+                        titulo = "Error al cargar los lotes",
+                        mensaje = uiState.mensajeError,
+                        icono = Icons.Default.Inventory
+                    )
                 }
 
                 uiState.lotesFiltrados.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // TODO [Integración I4]: Reemplazar por EstadoVacio cuando esté en vista/componentes/
-                        EstadoVacioLotesLocal(
-                            titulo = "No hay lotes en este estado",
-                            descripcion = if (uiState.filtroActual == FiltroEstadoLote.TODOS) {
-                                "No existen lotes con inventario disponible en este momento."
-                            } else {
-                                "No se encontraron lotes con estado ${uiState.filtroActual.etiqueta}."
-                            }
-                        )
-                    }
+                    EstadoVacio(
+                        titulo = "No hay lotes en este estado",
+                        mensaje = if (uiState.filtroActual == FiltroEstadoLote.TODOS) {
+                            "No existen lotes con inventario disponible en este momento."
+                        } else {
+                            "No se encontraron lotes con estado ${uiState.filtroActual.etiqueta}."
+                        },
+                        icono = Icons.Default.Inventory
+                    )
                 }
 
                 else -> {
@@ -244,8 +209,7 @@ fun MonitorLotesContent(
                             items = uiState.lotesFiltrados,
                             key = { it.lote.id }
                         ) { estadoLote ->
-                            // TODO [Integración I4]: Reemplazar por TarjetaLote cuando esté en vista/componentes/
-                            TarjetaLoteLocal(
+                            TarjetaLote(
                                 estadoLote = estadoLote,
                                 onRegistrarMerma = {
                                     onRegistrarMerma(estadoLote.lote.productoId)
@@ -291,8 +255,9 @@ private fun BarraFiltrosSemaforo(
     }
 }
 
+/** Tarjeta propia del monitor: no hay un equivalente genérico en vista/componentes/. */
 @Composable
-private fun TarjetaLoteLocal(
+private fun TarjetaLote(
     estadoLote: EstadoLote,
     onRegistrarMerma: () -> Unit
 ) {
@@ -340,8 +305,7 @@ private fun TarjetaLoteLocal(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // TODO [Integración I4]: Reemplazar por ChipSemaforo cuando esté en vista/componentes/
-                ChipSemaforoLocal(estado = estadoLote.estado)
+                ChipSemaforo(estado = estadoLote.estado)
             }
 
             // Indicador de horas restantes y descripción de estado
@@ -419,67 +383,6 @@ private fun TarjetaLoteLocal(
 }
 
 @Composable
-private fun ChipSemaforoLocal(estado: EstadoCaducidad) {
-    val (colorFondo, colorTexto, textoEtiqueta, icono) = when (estado) {
-        is EstadoCaducidad.Vigente -> CuadruploChip(
-            colorFondo = Color(0xFFE8F5E9),
-            colorTexto = Color(0xFF1B5E20),
-            etiqueta = "Verde",
-            icono = Icons.Default.CheckCircle
-        )
-        is EstadoCaducidad.ProximoAVencer -> CuadruploChip(
-            colorFondo = Color(0xFFFFF8E1),
-            colorTexto = Color(0xFFF57F17),
-            etiqueta = "Amarillo",
-            icono = Icons.Default.Schedule
-        )
-        is EstadoCaducidad.Critico -> CuadruploChip(
-            colorFondo = Color(0xFFFFEBEE),
-            colorTexto = Color(0xFFB71C1C),
-            etiqueta = "Rojo",
-            icono = Icons.Default.ReportProblem
-        )
-        is EstadoCaducidad.Vencido -> CuadruploChip(
-            colorFondo = Color(0xFF212121),
-            colorTexto = Color(0xFFFFFFFF),
-            etiqueta = "Vencido",
-            icono = Icons.Default.Error
-        )
-    }
-
-    Surface(
-        color = colorFondo,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(
-                imageVector = icono,
-                contentDescription = null,
-                tint = colorTexto,
-                modifier = Modifier.size(14.dp)
-            )
-            Text(
-                text = textoEtiqueta,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = colorTexto
-            )
-        }
-    }
-}
-
-private data class CuadruploChip(
-    val colorFondo: Color,
-    val colorTexto: Color,
-    val etiqueta: String,
-    val icono: androidx.compose.ui.graphics.vector.ImageVector
-)
-
-@Composable
 private fun DetalleLoteColumna(
     etiqueta: String,
     valor: String
@@ -494,37 +397,6 @@ private fun DetalleLoteColumna(
             text = valor,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-@Composable
-private fun EstadoVacioLotesLocal(
-    titulo: String,
-    descripcion: String
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.Inventory,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = titulo,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = descripcion,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
         )
     }
 }

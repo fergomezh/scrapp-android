@@ -11,15 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -27,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -36,8 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +48,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ctrlcafe.scrapp.controlador.LoteUiState
 import com.ctrlcafe.scrapp.controlador.LoteViewModel
 import com.ctrlcafe.scrapp.modelo.Producto
+import com.ctrlcafe.scrapp.vista.componentes.BotonPrimario
+import com.ctrlcafe.scrapp.vista.componentes.ScrappTextField
+import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,33 +118,11 @@ fun IngresoLoteContent(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // TODO [Integración I4]: Reemplazar por TopBarScrapp cuando esté en vista/componentes/
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Ingreso de Lote",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Registro y cálculo de caducidad",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onVolver) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver al monitor de lotes"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            TopBarScrapp(
+                title = "Ingreso de Lote",
+                subtitle = "Registro y cálculo de caducidad",
+                showBackButton = true,
+                onBackClick = onVolver
             )
         }
     ) { innerPadding ->
@@ -168,36 +143,39 @@ fun IngresoLoteContent(
             )
 
             // 2. Campo de Cantidad Inicial
-            ScrappTextFieldLocal(
-                valor = form.cantidadTexto,
+            ScrappTextField(
+                value = form.cantidadTexto,
                 onValueChange = onCantidadChange,
-                etiqueta = "Cantidad de ingreso ($unidadMedida)",
+                label = "Cantidad de ingreso ($unidadMedida)",
                 placeholder = "Ej. 25.0",
-                error = form.errorCantidad,
-                textoApoyo = "Ingrese la cantidad total recibida o producida",
+                isError = form.errorCantidad != null,
+                errorMessage = form.errorCantidad,
+                supportingText = "Ingrese la cantidad total recibida o producida",
                 keyboardType = KeyboardType.Decimal
             )
 
             // 3. Campo de Costo Unitario
-            ScrappTextFieldLocal(
-                valor = form.costoUnitarioTexto,
+            ScrappTextField(
+                value = form.costoUnitarioTexto,
                 onValueChange = onCostoUnitarioChange,
-                etiqueta = "Costo unitario ($ USD)",
+                label = "Costo unitario ($ USD)",
                 placeholder = "Ej. 1.80",
-                error = form.errorCosto,
-                textoApoyo = "Costo por unidad de medida ($unidadMedida)",
+                isError = form.errorCosto != null,
+                errorMessage = form.errorCosto,
+                supportingText = "Costo por unidad de medida ($unidadMedida)",
                 keyboardType = KeyboardType.Decimal
             )
 
             // 4. Campo de Fecha de Ingreso
-            ScrappTextFieldLocal(
-                valor = form.fechaIngresoTexto,
+            ScrappTextField(
+                value = form.fechaIngresoTexto,
                 onValueChange = onFechaIngresoChange,
-                etiqueta = "Fecha de ingreso (AAAA-MM-DD)",
+                label = "Fecha de ingreso (AAAA-MM-DD)",
                 placeholder = LocalDate.now().toString(),
-                error = form.errorFechaIngreso,
-                textoApoyo = "No se permiten fechas futuras",
-                iconoInicial = {
+                isError = form.errorFechaIngreso != null,
+                errorMessage = form.errorFechaIngreso,
+                supportingText = "No se permiten fechas futuras",
+                leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.CalendarToday,
                         contentDescription = null
@@ -206,13 +184,14 @@ fun IngresoLoteContent(
             )
 
             // 5. Campo de Vida Útil en días
-            ScrappTextFieldLocal(
-                valor = form.vidaUtilDiasTexto,
+            ScrappTextField(
+                value = form.vidaUtilDiasTexto,
                 onValueChange = onVidaUtilDiasChange,
-                etiqueta = "Vida útil (días)",
+                label = "Vida útil (días)",
                 placeholder = "Ej. 7",
-                error = form.errorVidaUtil,
-                textoApoyo = "Número entero de días antes del vencimiento",
+                isError = form.errorVidaUtil != null,
+                errorMessage = form.errorVidaUtil,
+                supportingText = "Número entero de días antes del vencimiento",
                 keyboardType = KeyboardType.Number
             )
 
@@ -241,15 +220,18 @@ fun IngresoLoteContent(
             ) {
                 OutlinedButton(
                     onClick = onLimpiarClick,
-                    modifier = Modifier.weight(1f)
+                    // Misma altura que BotonPrimario para que queden alineados
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
                 ) {
                     Text("Limpiar")
                 }
 
-                // TODO [Integración I4]: Reemplazar por BotonPrimario cuando esté en vista/componentes/
-                BotonPrimarioLocal(
-                    texto = "Guardar lote",
+                BotonPrimario(
+                    text = "Guardar lote",
                     onClick = onGuardarClick,
+                    icono = Icons.Default.Save,
                     modifier = Modifier.weight(1.5f)
                 )
             }
@@ -394,68 +376,5 @@ private fun TarjetaCaducidadPrevia(
                 }
             }
         }
-    }
-}
-
-/**
- * Componente local equivalente a `ScrappTextField` con soporte de `isError` y `supportingText`.
- * TODO [Integración I4]: Reemplazar por `ScrappTextField` cuando exista en `vista/componentes/`.
- */
-@Composable
-private fun ScrappTextFieldLocal(
-    valor: String,
-    onValueChange: (String) -> Unit,
-    etiqueta: String,
-    placeholder: String,
-    error: String?,
-    textoApoyo: String,
-    modifier: Modifier = Modifier,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    iconoInicial: (@Composable () -> Unit)? = null
-) {
-    OutlinedTextField(
-        value = valor,
-        onValueChange = onValueChange,
-        label = { Text(etiqueta) },
-        placeholder = { Text(placeholder) },
-        leadingIcon = iconoInicial,
-        singleLine = true,
-        isError = error != null,
-        supportingText = {
-            if (error != null) {
-                Text(text = error, color = MaterialTheme.colorScheme.error)
-            } else {
-                Text(text = textoApoyo)
-            }
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier = modifier.fillMaxWidth()
-    )
-}
-
-/**
- * Componente local equivalente a `BotonPrimario`.
- * TODO [Integración I4]: Reemplazar por `BotonPrimario` cuando exista en `vista/componentes/`.
- */
-@Composable
-private fun BotonPrimarioLocal(
-    texto: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier
-    ) {
-        Icon(
-            imageVector = Icons.Default.Save,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = texto,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

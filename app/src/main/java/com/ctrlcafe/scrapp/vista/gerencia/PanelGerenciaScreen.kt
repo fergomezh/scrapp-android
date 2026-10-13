@@ -16,12 +16,14 @@ import androidx.navigation.NavHostController
 import com.ctrlcafe.scrapp.controlador.GerenciaViewModel
 import com.ctrlcafe.scrapp.ui.theme.AlertaCritica
 import com.ctrlcafe.scrapp.ui.theme.TextoSecundario
+import com.ctrlcafe.scrapp.vista.componentes.BotonCerrarSesion
 import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 
 @Composable
 fun PanelGerenciaScreen(
     navController: NavHostController,
-    viewModel: GerenciaViewModel = viewModel()
+    viewModel: GerenciaViewModel = viewModel(),
+    onCerrarSesion: (() -> Unit)? = null
 ) {
     val perdidaDia = viewModel.perdidaDia.value
     val perdidaMes = viewModel.perdidaMes.value
@@ -29,7 +31,17 @@ fun PanelGerenciaScreen(
     val productosCriticos = viewModel.productosCriticos.value
 
     Scaffold(
-        topBar = { TopBarScrapp(title = "Panel de Gerencia", showBackButton = false) }
+        topBar = {
+            TopBarScrapp(
+                title = "Panel de Gerencia",
+                showBackButton = false,
+                actions = {
+                    if (onCerrarSesion != null) {
+                        BotonCerrarSesion(onCerrarSesion = onCerrarSesion)
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier

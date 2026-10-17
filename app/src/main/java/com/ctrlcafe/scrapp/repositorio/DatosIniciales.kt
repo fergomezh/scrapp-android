@@ -9,7 +9,8 @@ object DatosIniciales {
         usuarioRepo: UsuarioRepositorio,
         productoRepo: ProductoRepositorio,
         loteRepo: LoteRepositorio,
-        ventaRepo: VentaRepositorio
+        ventaRepo: VentaRepositorio,
+        mermaRepo: MermaRepositorio
     ) {
         val hoy = LocalDate.now()
 
@@ -70,6 +71,24 @@ object DatosIniciales {
                 idContador++
             }
         }
+
+        // Ajuste 3: Mermas de ejemplo para que el Panel de Gerencia no arranque vacío.
+        // Son históricas: las existencias de los lotes de arriba ya las descuentan.
+        // Se mantienen pequeñas para que la tasa de cada producto quede bajo el margen
+        // de seguridad (10 %); si lo superara, una merma nueva no cambiaría la proyección.
+        // Las fechas no salen del mes en curso, así cuentan en la pérdida del mes.
+        val inicioMes = hoy.withDayOfMonth(1)
+        fun diasAtras(dias: Long): LocalDate = maxOf(hoy.minusDays(dias), inicioMes)
+
+        val mermas = listOf(
+            Merma("MER-001", "LOT-001", "PROD-01", 1.0, 8.50, diasAtras(5), CausaMerma.DETERIORO_ALMACENAMIENTO, "sin_evidencia.jpg", "USR-02"),
+            Merma("MER-002", "LOT-003", "PROD-02", 2.0, 1.10, diasAtras(2), CausaMerma.DETERIORO_ALMACENAMIENTO, "sin_evidencia.jpg", "USR-02"),
+            Merma("MER-003", "LOT-004", "PROD-03", 2.0, 0.65, diasAtras(1), CausaMerma.NO_VENDIDO, "sin_evidencia.jpg", "USR-02"),
+            Merma("MER-004", "LOT-006", "PROD-04", 1.0, 1.80, diasAtras(1), CausaMerma.VENCIMIENTO, "sin_evidencia.jpg", "USR-02"),
+            Merma("MER-005", "LOT-008", "PROD-06", 2.0, 0.40, diasAtras(1), CausaMerma.VENCIMIENTO, "sin_evidencia.jpg", "USR-02"),
+            Merma("MER-006", "LOT-009", "PROD-07", 1.0, 0.55, diasAtras(1), CausaMerma.ERROR_PREPARACION, "sin_evidencia.jpg", "USR-01")
+        )
+        mermas.forEach { mermaRepo.crear(it) }
     }
 
 }

@@ -11,6 +11,7 @@ class ContenedorDatosTest {
     fun cargaDatosIniciales() {
         assertTrue(ContenedorDatos.productoRepositorio.listar().isNotEmpty())
         assertTrue(ContenedorDatos.loteRepositorio.listar().isNotEmpty())
+        assertTrue(ContenedorDatos.mermaRepositorio.listar().isNotEmpty())
     }
 
     @Test

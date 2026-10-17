@@ -50,6 +50,6 @@ object ContenedorDatos {
     val authRepositorio: AuthRepositorio by lazy { AuthRepositorio() }
 
     init {
-        DatosIniciales.cargar(usuarioRepositorio, productoRepositorio, loteRepositorio, ventaRepositorio)
+        DatosIniciales.cargar(usuarioRepositorio, productoRepositorio, loteRepositorio, ventaRepositorio, mermaRepositorio)
     }
 }

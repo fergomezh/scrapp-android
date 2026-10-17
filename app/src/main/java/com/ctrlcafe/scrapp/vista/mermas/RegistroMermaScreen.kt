@@ -66,6 +66,7 @@ fun RegistroMermaScreen(
     viewModel: MermaViewModel,
     usuarioId: String,
     productoPreseleccionadoId: String? = null,
+    lotePreseleccionadoId: String? = null,
     onRegistroCompletado: () -> Unit = {},
     // Si no es null se muestra la flecha de regreso (cuando se abre desde el Monitor de Lotes)
     onVolver: (() -> Unit)? = null,
@@ -97,6 +98,18 @@ fun RegistroMermaScreen(
             if (pre != null) {
                 productoSeleccionado = pre
                 viewModel.seleccionarProducto(pre.id)
+            }
+        }
+    }
+
+    // Solo la primera vez: si el usuario cambia de lote o registra otra merma, no se vuelve a forzar
+    var lotePreseleccionAplicada by remember { mutableStateOf(false) }
+    LaunchedEffect(lotesDisponibles, lotePreseleccionadoId) {
+        if (lotePreseleccionadoId != null && !lotePreseleccionAplicada) {
+            val pre = lotesDisponibles.firstOrNull { it.id == lotePreseleccionadoId }
+            if (pre != null) {
+                loteSeleccionado = pre
+                lotePreseleccionAplicada = true
             }
         }
     }
@@ -155,6 +168,8 @@ fun RegistroMermaScreen(
                     viewModel.reiniciarFormulario()
                     cantidadTexto = ""
                     loteSeleccionado = null
+                    // Recarga los lotes: el que se acaba de mermar pudo quedar sin existencias
+                    productoSeleccionado?.let { viewModel.seleccionarProducto(it.id) }
                     onRegistroCompletado()
                 }) {
                     Text("Registrar otra merma")

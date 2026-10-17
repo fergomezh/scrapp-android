@@ -68,7 +68,7 @@ import java.util.Locale
  * 1. Conexión en `ScrappNavHost.kt`:
  *    - `DashboardScreen(onIrAMonitorLotes = { navController.navigate(...) })`
  *    - `MonitorLotesScreen(`
- *          `onRegistrarMerma = { productoId -> navController.navigate("mermas/$productoId") },`
+ *          `onRegistrarMerma = { productoId, loteId -> navController.navigate(Rutas.RegistroMerma.conLote(productoId, loteId)) },`
  *          `onIrAIngresoLote = { navController.navigate("ingreso_lote") }`
  *      `)`
  *    - `IngresoLoteScreen(onVolver = { navController.popBackStack() })`
@@ -84,7 +84,7 @@ import java.util.Locale
 fun MonitorLotesScreen(
     modifier: Modifier = Modifier,
     viewModel: LoteViewModel = viewModel(factory = LoteViewModel.provideFactory()),
-    onRegistrarMerma: (productoId: String) -> Unit = {},
+    onRegistrarMerma: (productoId: String, loteId: String) -> Unit = { _, _ -> },
     onIrAIngresoLote: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -119,7 +119,7 @@ fun MonitorLotesContent(
     uiState: LoteUiState,
     onFiltroSeleccionado: (FiltroEstadoLote) -> Unit,
     onRefrescar: () -> Unit,
-    onRegistrarMerma: (productoId: String) -> Unit,
+    onRegistrarMerma: (productoId: String, loteId: String) -> Unit,
     onIrAIngresoLote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -212,7 +212,7 @@ fun MonitorLotesContent(
                             TarjetaLote(
                                 estadoLote = estadoLote,
                                 onRegistrarMerma = {
-                                    onRegistrarMerma(estadoLote.lote.productoId)
+                                    onRegistrarMerma(estadoLote.lote.productoId, estadoLote.lote.id)
                                 }
                             )
                         }
@@ -356,7 +356,7 @@ private fun TarjetaLote(
                 )
             }
 
-            // Acción obligatoria cuando el lote está vencido: navegar a Registrar merma con el producto elegido
+            // Acción obligatoria cuando el lote está vencido: navegar a Registrar merma con este producto y lote
             if (esVencido) {
                 Button(
                     onClick = onRegistrarMerma,

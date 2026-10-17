@@ -13,10 +13,11 @@ sealed class Rutas(val route: String) {
     object Registro : Rutas("registro")
     object IngresoLote : Rutas("ingreso_lote")
 
-    // Se abre desde el Monitor de Lotes con el producto ya elegido
-    object RegistroMerma : Rutas("registro_merma/{productoId}") {
+    // Se abre desde el Monitor de Lotes con el producto y el lote ya elegidos
+    object RegistroMerma : Rutas("registro_merma/{productoId}/{loteId}") {
         const val ARG_PRODUCTO_ID = "productoId"
-        fun conProducto(productoId: String) = "registro_merma/$productoId"
+        const val ARG_LOTE_ID = "loteId"
+        fun conLote(productoId: String, loteId: String) = "registro_merma/$productoId/$loteId"
     }
 }
 

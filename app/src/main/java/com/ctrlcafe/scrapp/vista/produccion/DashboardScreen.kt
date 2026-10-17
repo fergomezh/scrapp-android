@@ -60,7 +60,7 @@ import kotlin.math.roundToInt
 /**
  * Pantalla principal del operativo: Dashboard de Producción diaria (Integrante 3).
  *
- * Muestra la cantidad sugerida para hoy calculada por [MotorProyeccion], junto con
+ * Muestra la cantidad sugerida para mañana calculada por [MotorProyeccion], junto con
  * la demanda base y el margen aplicado. Cuando no existe historial suficiente,
  * presenta un estado vacío informativo.
  */
@@ -171,7 +171,7 @@ fun DashboardContent(
                     Spacer(modifier = Modifier.height(24.dp))
                     EstadoVacio(
                         titulo = "Sin historial suficiente",
-                        mensaje = "No hay registros de ventas en las últimas 4 semanas equivalentes para calcular la producción sugerida de hoy.",
+                        mensaje = "No hay registros de ventas en las últimas 4 semanas equivalentes para calcular la producción sugerida de mañana.",
                         icono = Icons.Default.Info
                     )
                 }
@@ -350,7 +350,7 @@ private fun TarjetaProductoProyeccion(
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(
-                            text = "Sugerido hoy",
+                            text = "Sugerido mañana",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (tieneSugerencia) {
                                 MaterialTheme.colorScheme.onPrimaryContainer

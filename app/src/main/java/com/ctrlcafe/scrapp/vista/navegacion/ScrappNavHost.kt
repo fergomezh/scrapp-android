@@ -107,8 +107,8 @@ fun ScrappNavHost(
 
         composable(RutasBottom.Lotes.route) {
             MonitorLotesScreen(
-                onRegistrarMerma = { productoId ->
-                    navController.navigate(Rutas.RegistroMerma.conProducto(productoId))
+                onRegistrarMerma = { productoId, loteId ->
+                    navController.navigate(Rutas.RegistroMerma.conLote(productoId, loteId))
                 },
                 onIrAIngresoLote = { navController.navigate(Rutas.IngresoLote.route) }
             )
@@ -127,12 +127,16 @@ fun ScrappNavHost(
 
         composable(
             route = Rutas.RegistroMerma.route,
-            arguments = listOf(navArgument(Rutas.RegistroMerma.ARG_PRODUCTO_ID) { type = NavType.StringType })
+            arguments = listOf(
+                navArgument(Rutas.RegistroMerma.ARG_PRODUCTO_ID) { type = NavType.StringType },
+                navArgument(Rutas.RegistroMerma.ARG_LOTE_ID) { type = NavType.StringType }
+            )
         ) { entrada ->
             RegistroMermaScreen(
                 viewModel = viewModel(),
                 usuarioId = usuarioActual?.uid.orEmpty(),
                 productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID),
+                lotePreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_LOTE_ID),
                 onVolver = { navController.popBackStack() }
             )
         }

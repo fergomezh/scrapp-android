@@ -7,10 +7,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.ctrlcafe.scrapp.controlador.GerenciaViewModel
@@ -25,6 +29,21 @@ fun PanelGerenciaScreen(
     viewModel: GerenciaViewModel = viewModel(),
     onCerrarSesion: (() -> Unit)? = null
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Recalcula al abrir o regresar al panel (ej. tras registrar una merma)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.cargarDatosFinancieros()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val perdidaDia = viewModel.perdidaDia.value
     val perdidaMes = viewModel.perdidaMes.value
     val indiceMerma = viewModel.indiceMerma.value
@@ -54,13 +73,22 @@ fun PanelGerenciaScreen(
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TarjetaFinanciera("Pérdida del Día", String.format("$%.2f", perdidaDia), Modifier.weight(1f))
-                    TarjetaFinanciera("Pérdida Acumulada", String.format("$%.2f", perdidaMes), Modifier.weight(1f))
+                    TarjetaFinanciera("Pérdida del Mes", String.format("$%.2f", perdidaMes), Modifier.weight(1f))
                 }
             }
-            item { TarjetaFinanciera("Índice de Merma Global", String.format("%.1f%%", indiceMerma * 100), Modifier.fillMaxWidth()) }
+            item { TarjetaFinanciera("Índice de Merma Global", String.format("%.1f%%", indiceMerma), Modifier.fillMaxWidth()) }
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Top 5 Productos Críticos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            if (productosCriticos.isEmpty()) {
+                item {
+                    Text(
+                        text = "Aún no hay mermas registradas este mes.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextoSecundario
+                    )
+                }
             }
             items(productosCriticos) { (nombre, porcentaje) ->
                 BarraProgresoProducto(nombre = nombre, porcentaje = porcentaje, textoPorcentaje = String.format("%.0f%%", porcentaje * 100))

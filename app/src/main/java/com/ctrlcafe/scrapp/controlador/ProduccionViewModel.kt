@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ctrlcafe.scrapp.modelo.Producto
-import com.ctrlcafe.scrapp.repositorio.DatosIniciales
+import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
@@ -27,7 +27,10 @@ import java.time.LocalDate
  * Estado inmutable de la pantalla Dashboard de Producción.
  */
 data class ProduccionUiState(
-    val fechaObjetivo: LocalDate = LocalDate.now(),
+    // Mañana, igual que MotorProyeccion y OrquestadorMerma: la tasa de merma usa la ventana
+    // que termina el día anterior a la fecha objetivo, así que con "hoy" las mermas
+    // registradas hoy no se reflejarían en el dashboard.
+    val fechaObjetivo: LocalDate = LocalDate.now().plusDays(1),
     val proyecciones: List<ProyeccionProducto> = emptyList(),
     val proyeccionesConHistorial: List<ProyeccionProducto> = emptyList(),
     val proyeccionesSinHistorial: List<ProyeccionProducto> = emptyList(),
@@ -137,51 +140,20 @@ class ProduccionViewModel(
 }
 
 /**
- * =========================================================================================
- * GUÍA DE INTEGRACIÓN PARA EL COORDINADOR (Rama: feat/modulo-principal -> develop)
- * =========================================================================================
- * 1. Capa de Datos (Integrante 1):
- *    Este objeto [ProveedorDependenciasModuloPrincipal] instancia en memoria los repositorios
- *    y ejecuta [DatosIniciales.cargar] como respaldo autónomo para que el módulo de Producción
- *    y Lotes funcione y compile de forma independiente.
+ * Punto de acceso a las dependencias de los módulos de Producción y Lotes.
  *
- * 2. Cómo unificar el estado con MermaViewModel (Integrante 2) y GerenciaViewModel (Integrante 4):
- *    Para que el descuento de lotes en [OrquestadorMerma] se refleje en [LoteViewModel] y
- *    [ProduccionViewModel], pase las instancias globales compartidas de los repositorios y motores
- *    usando [ProduccionViewModel.provideFactory] y [LoteViewModel.provideFactory] dentro de
- *    `ScrappNavHost.kt`, o reemplace las propiedades de este objeto por las referencias del
- *    contenedor global de la aplicación.
- * =========================================================================================
+ * No crea instancias propias: delega en [ContenedorDatos] para que [LoteViewModel],
+ * [ProduccionViewModel] y [MermaViewModel] compartan los mismos repositorios y motores.
+ * Así, una merma registrada por [OrquestadorMerma] se refleja de inmediato en el
+ * monitor de lotes y en el dashboard de producción.
  */
-
 internal object ProveedorDependenciasModuloPrincipal {
-    val usuarioRepositorio = UsuarioRepositorio()
-    val productoRepositorio = ProductoRepositorio()
-    val loteRepositorio = LoteRepositorio()
-    val ventaRepositorio = VentaRepositorio()
-    val mermaRepositorio = MermaRepositorio()
-    val configuracionMotores = ConfiguracionMotores()
-
-    init {
-        DatosIniciales.cargar(
-            usuarioRepo = usuarioRepositorio,
-            productoRepo = productoRepositorio,
-            loteRepo = loteRepositorio,
-            ventaRepo = ventaRepositorio
-        )
-    }
-
-    val motorProyeccion = MotorProyeccion(
-        ventaRepositorio = ventaRepositorio,
-        mermaRepositorio = mermaRepositorio,
-        loteRepositorio = loteRepositorio,
-        productoRepositorio = productoRepositorio,
-        configuracion = configuracionMotores
-    )
-
-    val motorSemaforo = MotorSemaforo(
-        loteRepositorio = loteRepositorio,
-        productoRepositorio = productoRepositorio,
-        configuracion = configuracionMotores
-    )
+    val usuarioRepositorio: UsuarioRepositorio = ContenedorDatos.usuarioRepositorio
+    val productoRepositorio: ProductoRepositorio = ContenedorDatos.productoRepositorio
+    val loteRepositorio: LoteRepositorio = ContenedorDatos.loteRepositorio
+    val ventaRepositorio: VentaRepositorio = ContenedorDatos.ventaRepositorio
+    val mermaRepositorio: MermaRepositorio = ContenedorDatos.mermaRepositorio
+    val configuracionMotores: ConfiguracionMotores = ContenedorDatos.configuracion
+    val motorProyeccion: MotorProyeccion = ContenedorDatos.proyeccion
+    val motorSemaforo: MotorSemaforo = ContenedorDatos.semaforo
 }

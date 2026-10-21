@@ -41,11 +41,6 @@ android {
     buildFeatures {
         compose = true
     }
-    testOptions {
-        // Los motores llaman a Logger -> android.util.Log; en pruebas JVM eso
-        // lanzaría "Method not mocked" sin esta opción.
-        unitTests.isReturnDefaultValues = true
-    }
 }
 
 dependencies {
@@ -72,7 +67,6 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

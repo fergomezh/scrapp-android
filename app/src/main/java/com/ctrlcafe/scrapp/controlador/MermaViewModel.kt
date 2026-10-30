@@ -7,9 +7,7 @@ import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
-import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
-import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
-import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
+import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 import com.ctrlcafe.scrapp.servicio.ResultadoRecalculo
 import com.ctrlcafe.scrapp.util.CantidadInvalidaException
@@ -29,9 +27,9 @@ sealed interface MermaEstadoUi {
 }
 
 class MermaViewModel(
-    private val productoRepo: ProductoRepositorio = ContenedorDatos.productoRepositorio,
-    private val loteRepo: LoteRepositorio = ContenedorDatos.loteRepositorio,
-    private val mermaRepo: MermaRepositorio = ContenedorDatos.mermaRepositorio,
+    private val productoRepo: Repositorio<Producto> = ContenedorDatos.productoRepositorio,
+    private val loteRepo: Repositorio<Lote> = ContenedorDatos.loteRepositorio,
+    private val mermaRepo: Repositorio<Merma> = ContenedorDatos.mermaRepositorio,
     private val orquestador: OrquestadorMerma = ContenedorDatos.orquestadorMerma
 ) : ViewModel() {
 
@@ -53,8 +51,9 @@ class MermaViewModel(
     }
 
     fun seleccionarProducto(productoId: String) {
-        _lotesDisponibles.value = loteRepo.listarPorProducto(productoId)
-            .filter { it.cantidadDisponible > 0.0 }
+        // CORREÇÃO: Utilizando listar() padrão e a função filter do Kotlin para buscar por produto
+        _lotesDisponibles.value = loteRepo.listar()
+            .filter { it.productoId == productoId && it.cantidadDisponible > 0.0 }
     }
 
     fun registrarMerma(

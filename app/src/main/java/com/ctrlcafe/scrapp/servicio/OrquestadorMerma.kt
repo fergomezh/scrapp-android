@@ -1,9 +1,12 @@
 package com.ctrlcafe.scrapp.servicio
 
+import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
+import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
+import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.util.Logger
 import java.time.LocalDateTime
 
@@ -19,9 +22,9 @@ import java.time.LocalDateTime
  * el resultado muestra el efecto real del registro.
  */
 class OrquestadorMerma(
-    private val loteRepositorio: LoteRepositorio,
-    private val mermaRepositorio: MermaRepositorio,
-    private val productoRepositorio: ProductoRepositorio,
+    private val loteRepositorio: Repositorio<Lote>,
+    private val mermaRepositorio: Repositorio<Merma>,
+    private val productoRepositorio: Repositorio<Producto>,
     private val semaforo: MotorSemaforo,
     private val financiero: MotorFinanciero,
     private val proyeccion: MotorProyeccion

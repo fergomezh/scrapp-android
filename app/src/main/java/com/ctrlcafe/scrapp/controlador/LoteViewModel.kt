@@ -7,7 +7,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ctrlcafe.scrapp.modelo.EstadoCaducidad
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Producto
-import com.ctrlcafe.scrapp.repositorio.Repositorio
+import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
+import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
 import com.ctrlcafe.scrapp.servicio.EstadoLote
 import com.ctrlcafe.scrapp.servicio.MotorSemaforo
 import com.ctrlcafe.scrapp.util.Logger
@@ -79,9 +80,8 @@ data class LoteUiState(
  */
 class LoteViewModel(
     private val motorSemaforo: MotorSemaforo = ProveedorDependenciasModuloPrincipal.motorSemaforo,
-    // MODIFIED: Replaced explicit repository types with generic Repositorio interface
-    private val loteRepositorio: Repositorio<Lote> = ProveedorDependenciasModuloPrincipal.loteRepositorio,
-    private val productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio
+    private val loteRepositorio: LoteRepositorio = ProveedorDependenciasModuloPrincipal.loteRepositorio,
+    private val productoRepositorio: ProductoRepositorio = ProveedorDependenciasModuloPrincipal.productoRepositorio
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoteUiState(cargando = true))
@@ -398,9 +398,8 @@ class LoteViewModel(
     companion object {
         fun provideFactory(
             motorSemaforo: MotorSemaforo = ProveedorDependenciasModuloPrincipal.motorSemaforo,
-            // MODIFIED: Replaced explicit repository types with generic Repositorio interface
-            loteRepositorio: Repositorio<Lote> = ProveedorDependenciasModuloPrincipal.loteRepositorio,
-            productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio
+            loteRepositorio: LoteRepositorio = ProveedorDependenciasModuloPrincipal.loteRepositorio,
+            productoRepositorio: ProductoRepositorio = ProveedorDependenciasModuloPrincipal.productoRepositorio
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 LoteViewModel(

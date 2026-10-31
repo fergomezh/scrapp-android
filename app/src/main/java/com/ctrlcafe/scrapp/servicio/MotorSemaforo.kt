@@ -2,10 +2,8 @@ package com.ctrlcafe.scrapp.servicio
 
 import com.ctrlcafe.scrapp.modelo.EstadoCaducidad
 import com.ctrlcafe.scrapp.modelo.Lote
-import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
-import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.util.LoteVencidoException
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
@@ -27,8 +25,8 @@ import java.time.LocalDateTime
  * (`fechaCaducidad.isBefore(hoy)` => vencido).
  */
 class MotorSemaforo(
-    private val loteRepositorio: Repositorio<Lote>,
-    private val productoRepositorio: Repositorio<Producto>,
+    private val loteRepositorio: LoteRepositorio,
+    private val productoRepositorio: ProductoRepositorio,
     private val configuracion: ConfiguracionMotores
 ) {
 

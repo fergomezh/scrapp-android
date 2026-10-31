@@ -1,13 +1,9 @@
 package com.ctrlcafe.scrapp.servicio
 
-import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
-import com.ctrlcafe.scrapp.modelo.Producto
-import com.ctrlcafe.scrapp.modelo.RegistroVenta
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
-import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.repositorio.VentaRepositorio
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
@@ -27,10 +23,10 @@ import java.time.LocalDate
  * fecha objetivo.
  */
 class MotorProyeccion(
-    private val ventaRepositorio: Repositorio<RegistroVenta>,
-    private val mermaRepositorio: Repositorio<Merma>,
-    private val loteRepositorio: Repositorio<Lote>,
-    private val productoRepositorio: Repositorio<Producto>,
+    private val ventaRepositorio: VentaRepositorio,
+    private val mermaRepositorio: MermaRepositorio,
+    private val loteRepositorio: LoteRepositorio,
+    private val productoRepositorio: ProductoRepositorio,
     private val configuracion: ConfiguracionMotores
 ) {
 

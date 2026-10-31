@@ -10,9 +10,6 @@ data class Merma(
     val costoUnitarioCongelado: Double,
     val fecha: LocalDate,
     val causa: CausaMerma,
-    val rutaEvidencia: String, // En Firestore se mapeará como urlEvidencia
-    val usuarioId: String,
-    // Nuevos campos requeridos por Firestore (desnormalización de nombre)
-    val nombreUsuario: String = "",
-    val creadoEn: LocalDate? = null
+    val rutaEvidencia: String,
+    val usuarioId: String
 )

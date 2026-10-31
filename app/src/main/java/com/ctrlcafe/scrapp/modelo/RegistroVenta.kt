@@ -6,7 +6,5 @@ data class RegistroVenta(
     val id: String,
     val productoId: String,
     val cantidad: Double,
-    val fecha: LocalDate,
-    // Nuevos campos requeridos por Firestore
-    val creadoPor: String = ""
+    val fecha: LocalDate
 )

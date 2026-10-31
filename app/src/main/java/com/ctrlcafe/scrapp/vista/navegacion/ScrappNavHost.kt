@@ -1,5 +1,4 @@
 package com.ctrlcafe.scrapp.vista.navegacion
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +26,14 @@ import com.ctrlcafe.scrapp.vista.lotes.MonitorLotesScreen
 import com.ctrlcafe.scrapp.vista.mermas.RegistroMermaScreen
 import com.ctrlcafe.scrapp.vista.produccion.DashboardScreen
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.ctrlcafe.scrapp.R
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+
+
 
 @Composable
 fun ScrappNavHost(
@@ -49,13 +56,13 @@ fun ScrappNavHost(
         startDestination = Rutas.Splash.route,
         modifier = modifier
     ) {
-        // --- PANTALLA SPLASH EN COMPOSE (PENDIENTE LOGO EQUIPO) ---
+        // --- PANTALLA SPLASH ya PUSE EL LOGO ATT WILLIAM
         composable(Rutas.Splash.route) {
             LaunchedEffect(key1 = true) {
                 delay(1500) // Se muestra por 1.5 segundos en pantalla
-                // CORREGIDO: Salta al Login por defecto para no forzar la UI administrativa
+                // Salta al Login por defecto de forma limpia
                 navController.navigate(Rutas.Login.route) {
-                    popUpTo(Rutas.Splash.route) { inclusive = true } // Remueve el Splash del historial
+                    popUpTo(Rutas.Splash.route) { inclusive = true } // Lo remueve de la pila
                 }
             }
             Box(
@@ -64,12 +71,13 @@ fun ScrappNavHost(
                     .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Scrapp",
-                    fontSize = 42.sp,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                // REEMPLAZADO: Muestra el logo físico del equipo centrado y estético
+                Image(
+                    painter = painterResource(id = R.drawable.scrapp), // <-- Apunta a tu archivo en drawable
+                    contentDescription = "Logo Oficial de Scrapp",
+                    modifier = Modifier
+                        .size(180.dp), // Ajusta el tamaño (ancho y alto) a tu gusto
+                    contentScale = ContentScale.Fit
                 )
             }
         }

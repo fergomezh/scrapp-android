@@ -2,6 +2,7 @@ package com.ctrlcafe.scrapp.vista.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +19,11 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,8 +54,10 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginExitoso: (PerfilUsuario) -> Unit,
     onIrARegistro: () -> Unit,
+    onIrARecuperarContrasena: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val estadoUi by viewModel.estado.collectAsState()
 
     var correo by remember { mutableStateOf("") }
@@ -91,21 +97,38 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            if (estadoUi is AuthEstadoUi.Error) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                ) {
-                    Text(
-                        text = (estadoUi as AuthEstadoUi.Error).mensaje,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(12.dp)
-                    )
+            when (estadoUi) {
+                is AuthEstadoUi.Error -> {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            text = (estadoUi as AuthEstadoUi.Error).mensaje,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
+                is AuthEstadoUi.CuentaDesactivada -> {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            text = "Tu cuenta ha sido desactivada por un administrador.",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+                else -> {}
             }
 
             OutlinedTextField(
@@ -140,7 +163,7 @@ fun LoginScreen(
                     IconButton(onClick = { mostrarContrasena = !mostrarContrasena }) {
                         Icon(
                             imageVector = if (mostrarContrasena) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (mostrarContrasena) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (mostrarContrasena) "Ocultar" else "Mostrar"
                         )
                     }
                 },
@@ -155,7 +178,16 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onIrARecuperarContrasena) {
+                    Text("¿Olvidaste tu contraseña?", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             val cargando = estadoUi is AuthEstadoUi.Cargando
 
@@ -165,7 +197,7 @@ fun LoginScreen(
                     errorContrasena = Validador.validarContrasena(contrasena)
 
                     if (errorCorreo == null && errorContrasena == null) {
-                        viewModel.limpiarError()
+                        viewModel.limpiarEstado()
                         viewModel.iniciarSesion(correo, contrasena)
                     }
                 },
@@ -183,6 +215,38 @@ fun LoginScreen(
                 } else {
                     Text("Iniciar Sesión")
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(
+                    text = "O bien",
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón oficial de Google Sign-In con Credential Manager
+            OutlinedButton(
+                onClick = {
+                    viewModel.limpiarEstado()
+                    viewModel.iniciarSesionConGoogle(context)
+                },
+                enabled = !cargando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Continuar con Google")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

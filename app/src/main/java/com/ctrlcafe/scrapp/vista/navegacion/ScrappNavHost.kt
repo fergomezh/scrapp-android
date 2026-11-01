@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.ctrlcafe.scrapp.controlador.AuthViewModel
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.vista.auth.LoginScreen
+import com.ctrlcafe.scrapp.vista.auth.RecuperarContrasenaScreen
 import com.ctrlcafe.scrapp.vista.auth.RegistroScreen
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
 import com.ctrlcafe.scrapp.vista.lotes.IngresoLoteScreen
@@ -53,7 +54,6 @@ fun ScrappNavHost(
         composable(Rutas.Splash.route) {
             LaunchedEffect(key1 = true) {
                 delay(1500) // Se muestra por 1.5 segundos en pantalla
-                // CORREGIDO: Salta al Login por defecto para no forzar la UI administrativa
                 navController.navigate(Rutas.Login.route) {
                     popUpTo(Rutas.Splash.route) { inclusive = true } // Remueve el Splash del historial
                 }
@@ -74,8 +74,7 @@ fun ScrappNavHost(
             }
         }
 
-        // --- DESTINOS DEFINITIVOS DE LA APLICACIÓN ---
-        // Si Firebase ya tiene una sesión guardada, LoginScreen salta directo a Producción
+        // --- DESTINOS DE AUTENTICACIÓN ---
         composable(Rutas.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
@@ -83,6 +82,10 @@ fun ScrappNavHost(
                 onIrARegistro = {
                     authViewModel.limpiarError()
                     navController.navigate(Rutas.Registro.route)
+                },
+                onIrARecuperarContrasena = {
+                    authViewModel.limpiarError()
+                    navController.navigate("recuperar_contrasena")
                 }
             )
         }
@@ -98,6 +101,17 @@ fun ScrappNavHost(
             )
         }
 
+        composable("recuperar_contrasena") {
+            RecuperarContrasenaScreen(
+                viewModel = authViewModel,
+                onVolver = {
+                    authViewModel.limpiarError()
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // --- MÓDULOS DEL SISTEMA ---
         composable(RutasBottom.Produccion.route) {
             DashboardScreen(
                 onIrAMonitorLotes = { navegarAPestana(navController, RutasBottom.Lotes.route) },
@@ -143,14 +157,11 @@ fun ScrappNavHost(
 
         // --- PANTALLA PROTEGIDA POR ROL (SOLO ADMINISTRADOR) ---
         composable(RutasBottom.Gerencia.route) {
-            // Filtro de seguridad por el rol guardado en Firestore
             val esAdmin = usuarioActual?.esAdministrador == true
 
             if (esAdmin) {
                 PanelGerenciaScreen(navController = navController, onCerrarSesion = cerrarSesion)
             } else {
-                // Redirección si un rol operativo intenta saltarse la UI.
-                // Va en LaunchedEffect: navegar durante la composición provoca recomposiciones en bucle.
                 LaunchedEffect(Unit) {
                     navController.navigate(RutasBottom.Produccion.route) {
                         popUpTo(RutasBottom.Gerencia.route) { inclusive = true }

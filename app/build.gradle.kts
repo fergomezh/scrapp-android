@@ -85,7 +85,7 @@ dependencies {
     implementation("com.patrykandpatrick.vico:core:1.15.0")
 
     // 2. Hardware de Cámara (CameraX)
-    val versionCameraX = "1.3.4"
+    val versionCameraX = "1.4.2"
     implementation("androidx.camera:camera-core:$versionCameraX")
     implementation("androidx.camera:camera-camera2:$versionCameraX")
     implementation("androidx.camera:camera-lifecycle:$versionCameraX")

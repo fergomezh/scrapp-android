@@ -20,7 +20,9 @@ import com.ctrlcafe.scrapp.controlador.AuthViewModel
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.vista.auth.LoginScreen
 import com.ctrlcafe.scrapp.vista.auth.RecuperarContrasenaScreen
+import com.ctrlcafe.scrapp.vista.administracion.GestionUsuariosScreen
 import com.ctrlcafe.scrapp.vista.auth.RegistroScreen
+import com.ctrlcafe.scrapp.vista.gerencia.ConfiguracionMotoresScreen
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
 import com.ctrlcafe.scrapp.vista.lotes.IngresoLoteScreen
 import com.ctrlcafe.scrapp.vista.lotes.MonitorLotesScreen
@@ -93,7 +95,7 @@ fun ScrappNavHost(
                 },
                 onIrARecuperarContrasena = {
                     authViewModel.limpiarError()
-                    navController.navigate("recuperar_contrasena")
+                    navController.navigate(Rutas.RecuperarContrasena.route)
                 }
             )
         }
@@ -109,7 +111,7 @@ fun ScrappNavHost(
             )
         }
 
-        composable("recuperar_contrasena") {
+        composable(Rutas.RecuperarContrasena.route) {
             RecuperarContrasenaScreen(
                 viewModel = authViewModel,
                 onVolver = {
@@ -175,6 +177,27 @@ fun ScrappNavHost(
                         popUpTo(RutasBottom.Gerencia.route) { inclusive = true }
                     }
                 }
+            }
+        }
+
+        // Se abren desde los iconos del Panel de Gerencia; también solo para administrador
+        composable(RutasBottom.GestionUsuarios.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                GestionUsuariosScreen(
+                    viewModel = viewModel(),
+                    uidAdminActual = usuarioActual?.uid.orEmpty(),
+                    onVolver = { navController.popBackStack() }
+                )
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            }
+        }
+
+        composable(Rutas.ConfigurarMotores.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                ConfiguracionMotoresScreen(navController = navController)
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
             }
         }
     }

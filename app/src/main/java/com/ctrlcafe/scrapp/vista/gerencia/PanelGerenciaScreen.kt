@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,6 +25,8 @@ import com.ctrlcafe.scrapp.ui.theme.AlertaCritica
 import com.ctrlcafe.scrapp.ui.theme.TextoSecundario
 import com.ctrlcafe.scrapp.vista.componentes.BotonCerrarSesion
 import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
+import com.ctrlcafe.scrapp.vista.navegacion.Rutas
+import com.ctrlcafe.scrapp.vista.navegacion.RutasBottom
 
 // --- IMPORTACIONES CORREGIDAS CON EL NOMBRE OFICIAL DE LA LIBRERÍA VICO (WILLIAM) ---
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
@@ -66,6 +71,12 @@ fun PanelGerenciaScreen(
                 title = "Panel de Gerencia",
                 showBackButton = false,
                 actions = {
+                    IconButton(onClick = { navController.navigate(RutasBottom.GestionUsuarios.route) }) {
+                        Icon(Icons.Default.People, contentDescription = "Gestión de usuarios")
+                    }
+                    IconButton(onClick = { navController.navigate(Rutas.ConfigurarMotores.route) }) {
+                        Icon(Icons.Default.Tune, contentDescription = "Configuración de motores")
+                    }
                     if (onCerrarSesion != null) {
                         BotonCerrarSesion(onCerrarSesion = onCerrarSesion)
                     }

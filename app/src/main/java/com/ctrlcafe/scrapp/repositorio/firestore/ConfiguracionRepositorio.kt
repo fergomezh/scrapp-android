@@ -1,5 +1,6 @@
 package com.ctrlcafe.scrapp.repositorio.firestore
 
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,16 +14,16 @@ class ConfiguracionRepositorio {
     private val _configFlow = MutableStateFlow(mapOf<String, Any>())
     val configFlow = _configFlow.asStateFlow()
 
-    init {
-        docRef.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
+    private val escucha = EscuchaFirestore<DocumentSnapshot>("configuracion") { snapshot ->
+        if (snapshot.exists()) {
+            _configFlow.value = snapshot.data ?: mapOf()
+        }
+    }
 
-            val firestoreData = snapshot.data
-            if (firestoreData != null) {
-                _configFlow.value = firestoreData
-            } else {
-                _configFlow.value = mapOf()
-            }
+    init {
+        // Se reabre con cada sesión: sin usuario activo las reglas rechazan la lectura
+        SesionFirestore.alCambiarUsuario { uid ->
+            if (uid == null) escucha.detener() else escucha.iniciar(docRef)
         }
     }
 

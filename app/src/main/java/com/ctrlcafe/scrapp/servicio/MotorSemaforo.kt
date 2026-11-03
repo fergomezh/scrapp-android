@@ -72,10 +72,13 @@ class MotorSemaforo(
         }
     }
 
-    /** Reevalúa un lote, guarda el nuevo estado en el repositorio y lo devuelve. */
+    /**
+     * Reevalúa un lote y lo devuelve. El estado solo se asigna en memoria: en Firestore
+     * no se guarda (se calcula siempre a partir de `fechaCaducidad`), así recalcular
+     * no genera escrituras ni dispara los listeners de los demás dispositivos.
+     */
     fun recalcular(lote: Lote, ahora: LocalDateTime = LocalDateTime.now()): EstadoLote {
         lote.estado = evaluar(lote, ahora)
-        loteRepositorio.actualizar(lote.id, lote)
         return aEstadoLote(lote, ahora)
     }
 

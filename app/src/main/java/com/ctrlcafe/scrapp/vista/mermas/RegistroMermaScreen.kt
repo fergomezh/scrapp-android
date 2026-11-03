@@ -67,6 +67,7 @@ import java.time.LocalDate
 fun RegistroMermaScreen(
     viewModel: MermaViewModel,
     usuarioId: String,
+    nombreUsuario: String = "",
     productoPreseleccionadoId: String? = null,
     lotePreseleccionadoId: String? = null,
     onRegistroCompletado: () -> Unit = {},
@@ -382,7 +383,8 @@ fun RegistroMermaScreen(
                                 causa = causaSeleccionada,
                                 fecha = LocalDate.now(),
                                 rutaEvidencia = rutaEvidencia,
-                                usuarioId = usuarioId
+                                usuarioId = usuarioId,
+                                nombreUsuario = nombreUsuario
                             )
                         }
                     },

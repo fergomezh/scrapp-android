@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
@@ -73,6 +74,9 @@ fun PanelGerenciaScreen(
                 actions = {
                     IconButton(onClick = { navController.navigate(RutasBottom.GestionUsuarios.route) }) {
                         Icon(Icons.Default.People, contentDescription = "Gestión de usuarios")
+                    }
+                    IconButton(onClick = { navController.navigate(RutasBottom.CatalogoProductos.route) }) {
+                        Icon(Icons.Default.LocalCafe, contentDescription = "Catálogo de productos")
                     }
                     IconButton(onClick = { navController.navigate(Rutas.ConfigurarMotores.route) }) {
                         Icon(Icons.Default.Tune, contentDescription = "Configuración de motores")

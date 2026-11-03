@@ -13,7 +13,8 @@ fun BarraInferior(navController: NavHostController, esAdministrador: Boolean) {
     val itemsBase = listOf(
         RutasBottom.Produccion,
         RutasBottom.Lotes,
-        RutasBottom.Mermas
+        RutasBottom.Mermas,
+        RutasBottom.Historial
     )
 
     // Agrega Gerencia solo si el rol del usuario es Administrador

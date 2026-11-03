@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -66,6 +67,8 @@ import java.util.Locale
 fun IngresoLoteScreen(
     modifier: Modifier = Modifier,
     viewModel: LoteViewModel = viewModel(factory = LoteViewModel.provideFactory()),
+    // uid del usuario en sesión: se guarda como `creadoPor` del lote (lo exigen las reglas)
+    usuarioId: String = "",
     onVolver: () -> Unit = {},
     onLoteGuardado: () -> Unit = onVolver
 ) {
@@ -75,7 +78,12 @@ fun IngresoLoteScreen(
     LaunchedEffect(uiState.formulario.guardadoExitoso) {
         if (uiState.formulario.guardadoExitoso) {
             val idCreado = uiState.formulario.ultimoLoteCreadoId ?: ""
-            snackbarHostState.showSnackbar("Lote $idCreado registrado correctamente")
+            val mensaje = if (uiState.formulario.guardadoSinConexion) {
+                "Sin conexión: el lote $idCreado se guardó en el dispositivo y se sincronizará al volver la red"
+            } else {
+                "Lote $idCreado registrado correctamente"
+            }
+            snackbarHostState.showSnackbar(mensaje)
             viewModel.consumirEventoGuardado()
             onLoteGuardado()
         }
@@ -89,7 +97,7 @@ fun IngresoLoteScreen(
         onCostoUnitarioChange = viewModel::onCostoUnitarioChange,
         onFechaIngresoChange = viewModel::onFechaIngresoChange,
         onVidaUtilDiasChange = viewModel::onVidaUtilDiasChange,
-        onGuardarClick = { viewModel.guardarLote() },
+        onGuardarClick = { viewModel.guardarLote(usuarioId) },
         onLimpiarClick = viewModel::limpiarFormulario,
         onVolver = onVolver,
         modifier = modifier
@@ -220,6 +228,7 @@ fun IngresoLoteContent(
             ) {
                 OutlinedButton(
                     onClick = onLimpiarClick,
+                    enabled = !form.guardando,
                     // Misma altura que BotonPrimario para que queden alineados
                     modifier = Modifier
                         .weight(1f)
@@ -229,11 +238,17 @@ fun IngresoLoteContent(
                 }
 
                 BotonPrimario(
-                    text = "Guardar lote",
+                    text = if (form.guardando) "Guardando..." else "Guardar lote",
                     onClick = onGuardarClick,
+                    enabled = !form.guardando,
                     icono = Icons.Default.Save,
                     modifier = Modifier.weight(1.5f)
                 )
+            }
+
+            // Indicador mientras Firestore confirma la escritura
+            if (form.guardando) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }

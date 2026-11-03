@@ -4,9 +4,11 @@ import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 
 class FirestoreLoteRepositorio : Repositorio<Lote> {
@@ -17,25 +19,33 @@ class FirestoreLoteRepositorio : Repositorio<Lote> {
     private val _lotesFlow = MutableStateFlow<List<Lote>>(emptyList())
     val lotesFlow: StateFlow<List<Lote>> = _lotesFlow.asStateFlow()
 
-    init {
-        coleccion.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null) return@addSnapshotListener
+    private val escucha = EscuchaFirestore<QuerySnapshot>("lotes") { snapshot ->
+        val lista = snapshot.documents.mapNotNull { doc ->
+            Lote(
+                id = doc.id,
+                productoId = doc.getString("productoId") ?: "",
+                cantidadInicial = doc.getDouble("cantidadInicial") ?: 0.0,
+                cantidadDisponible = doc.getDouble("cantidadDisponible") ?: 0.0,
+                costoUnitario = doc.getDouble("costoUnitario") ?: 0.0,
+                fechaIngreso = doc.getTimestamp("fechaIngreso")?.aLocalDate() ?: LocalDate.now(),
+                vidaUtilDias = doc.getLong("vidaUtilDias")?.toInt() ?: 0,
+                fechaCaducidad = doc.getTimestamp("fechaCaducidad")?.aLocalDate() ?: LocalDate.now(),
+                creadoPor = doc.getString("creadoPor") ?: "",
+                creadoEn = doc.getTimestamp("creadoEn")?.aLocalDate()
+            )
+        }
+        _lotesFlow.value = lista
+    }
 
-            val lista = snapshot.documents.mapNotNull { doc ->
-                Lote(
-                    id = doc.id,
-                    productoId = doc.getString("productoId") ?: "",
-                    cantidadInicial = doc.getDouble("cantidadInicial") ?: 0.0,
-                    cantidadDisponible = doc.getDouble("cantidadDisponible") ?: 0.0,
-                    costoUnitario = doc.getDouble("costoUnitario") ?: 0.0,
-                    fechaIngreso = doc.getTimestamp("fechaIngreso")?.aLocalDate() ?: LocalDate.now(),
-                    vidaUtilDias = doc.getLong("vidaUtilDias")?.toInt() ?: 0,
-                    fechaCaducidad = doc.getTimestamp("fechaCaducidad")?.aLocalDate() ?: LocalDate.now(),
-                    creadoPor = doc.getString("creadoPor") ?: "",
-                    creadoEn = doc.getTimestamp("creadoEn")?.aLocalDate()
-                )
+    init {
+        // Se reabre con cada sesión: sin usuario activo las reglas rechazan la lectura
+        SesionFirestore.alCambiarUsuario { uid ->
+            if (uid == null) {
+                escucha.detener()
+                _lotesFlow.value = emptyList()
+            } else {
+                escucha.iniciar(coleccion)
             }
-            _lotesFlow.value = lista
         }
     }
 
@@ -50,7 +60,23 @@ class FirestoreLoteRepositorio : Repositorio<Lote> {
     override fun crear(entidad: Lote): Lote {
         val ref = if (entidad.id.isBlank()) coleccion.document() else coleccion.document(entidad.id)
         val nuevoLote = entidad.copy(id = ref.id)
+        ref.set(mapearDatos(nuevoLote))
+        return nuevoLote
+    }
 
+    /**
+     * Igual que [crear], pero suspende hasta que el servidor confirma la escritura,
+     * para que IngresoLoteScreen pueda mostrar la carga y los errores (reglas, red).
+     * Sin conexión no termina nunca: quien lo llama debe ponerle un tiempo límite.
+     */
+    suspend fun crearConfirmado(entidad: Lote): Lote {
+        val ref = if (entidad.id.isBlank()) coleccion.document() else coleccion.document(entidad.id)
+        val nuevoLote = entidad.copy(id = ref.id)
+        ref.set(mapearDatos(nuevoLote)).await()
+        return nuevoLote
+    }
+
+    private fun mapearDatos(nuevoLote: Lote): Map<String, Any> {
         val datos = hashMapOf(
             "productoId" to nuevoLote.productoId,
             "cantidadInicial" to nuevoLote.cantidadInicial,
@@ -62,9 +88,7 @@ class FirestoreLoteRepositorio : Repositorio<Lote> {
             "creadoPor" to nuevoLote.creadoPor,
             "creadoEn" to FieldValue.serverTimestamp()
         )
-
-        ref.set(datos)
-        return nuevoLote
+        return datos
     }
 
     override fun actualizar(id: String, entidad: Lote): Boolean {

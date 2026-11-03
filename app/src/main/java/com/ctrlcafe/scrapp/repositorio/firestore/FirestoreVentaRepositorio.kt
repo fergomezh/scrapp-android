@@ -4,6 +4,7 @@ import com.ctrlcafe.scrapp.modelo.RegistroVenta
 import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,20 +18,28 @@ class FirestoreVentaRepositorio : Repositorio<RegistroVenta> {
     private val _ventasFlow = MutableStateFlow<List<RegistroVenta>>(emptyList())
     val ventasFlow: StateFlow<List<RegistroVenta>> = _ventasFlow.asStateFlow()
 
-    init {
-        coleccion.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null) return@addSnapshotListener
+    private val escucha = EscuchaFirestore<QuerySnapshot>("ventas") { snapshot ->
+        val lista = snapshot.documents.mapNotNull { doc ->
+            RegistroVenta(
+                id = doc.id,
+                productoId = doc.getString("productoId") ?: "",
+                cantidad = doc.getDouble("cantidad") ?: 0.0,
+                fecha = doc.getTimestamp("fecha")?.aLocalDate() ?: LocalDate.now(),
+                creadoPor = doc.getString("creadoPor") ?: ""
+            )
+        }
+        _ventasFlow.value = lista
+    }
 
-            val lista = snapshot.documents.mapNotNull { doc ->
-                RegistroVenta(
-                    id = doc.id,
-                    productoId = doc.getString("productoId") ?: "",
-                    cantidad = doc.getDouble("cantidad") ?: 0.0,
-                    fecha = doc.getTimestamp("fecha")?.aLocalDate() ?: LocalDate.now(),
-                    creadoPor = doc.getString("creadoPor") ?: ""
-                )
+    init {
+        // Se reabre con cada sesión: sin usuario activo las reglas rechazan la lectura
+        SesionFirestore.alCambiarUsuario { uid ->
+            if (uid == null) {
+                escucha.detener()
+                _ventasFlow.value = emptyList()
+            } else {
+                escucha.iniciar(coleccion)
             }
-            _ventasFlow.value = lista
         }
     }
 

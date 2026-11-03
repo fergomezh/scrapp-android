@@ -52,6 +52,7 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
         val ref = if (entidad.id.isBlank()) coleccion.document() else coleccion.document(entidad.id)
         val nueva = entidad.copy(id = ref.id)
         ref.set(mapearDatos(nueva))
+        agregarACopiaLocal(nueva)
         return nueva
     }
 
@@ -59,10 +60,11 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
      * Transacción acordada con el Integrante 3 para OrquestadorMerma.
      * Garantiza que la merma se guarda Y el lote se descuenta al mismo tiempo.
      */
-    fun registrarMermaYDescontarLote(merma: Merma, nuevaCantidadDisponibleLote: Double) {
+    fun registrarMermaYDescontarLote(merma: Merma, nuevaCantidadDisponibleLote: Double): Merma {
         val batch = db.batch()
 
-        val refMerma = coleccion.document()
+        // Respeta el id que ya trae la merma: OrquestadorMerma la busca por ese id justo después
+        val refMerma = if (merma.id.isBlank()) coleccion.document() else coleccion.document(merma.id)
         val mermaFinal = merma.copy(id = refMerma.id)
         batch.set(refMerma, mapearDatos(mermaFinal))
 
@@ -70,6 +72,18 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
         batch.update(refLote, "cantidadDisponible", nuevaCantidadDisponibleLote)
 
         batch.commit()
+        agregarACopiaLocal(mermaFinal)
+        return mermaFinal
+    }
+
+    /**
+     * El listener tarda un ciclo en reflejar la escritura, y los motores leen la copia
+     * en memoria en el mismo instante. Se agrega aquí y el listener la reemplaza al llegar.
+     */
+    private fun agregarACopiaLocal(merma: Merma) {
+        if (_mermasFlow.value.none { it.id == merma.id }) {
+            _mermasFlow.value = _mermasFlow.value + merma
+        }
     }
 
     private fun mapearDatos(merma: Merma) = hashMapOf(

@@ -8,6 +8,7 @@ import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.repositorio.Repositorio
+import com.ctrlcafe.scrapp.repositorio.firestore.FirestoreMermaRepositorio
 import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 import com.ctrlcafe.scrapp.servicio.ResultadoRecalculo
 import com.ctrlcafe.scrapp.util.CantidadInvalidaException
@@ -77,12 +78,11 @@ class MermaViewModel(
                     throw CantidadInvalidaException("La cantidad ($cantidad) supera las existencias del lote (${lote.cantidadDisponible}).")
                 }
 
-                // 1. Congelar costo y descontar existencias en el lote
+                // 1. Congelar costo y descontar existencias en el lote (en memoria; se persiste en el paso 2)
                 val costoCongelado = lote.costoUnitario
                 lote.cantidadDisponible -= cantidad
-                loteRepo.actualizar(lote.id, lote)
 
-                // 2. Persistir entidad Merma
+                // 2. Persistir la merma y el descuento del lote juntos
                 val nuevaMerma = Merma(
                     id = "MER-${UUID.randomUUID().toString().take(6).uppercase()}",
                     loteId = lote.id,
@@ -94,7 +94,13 @@ class MermaViewModel(
                     rutaEvidencia = rutaEvidencia.ifBlank { "sin_evidencia.jpg" },
                     usuarioId = usuarioId
                 )
-                mermaRepo.crear(nuevaMerma)
+                if (mermaRepo is FirestoreMermaRepositorio) {
+                    // WriteBatch: nunca queda una merma sin su descuento de lote, ni al revés
+                    mermaRepo.registrarMermaYDescontarLote(nuevaMerma, lote.cantidadDisponible)
+                } else {
+                    loteRepo.actualizar(lote.id, lote)
+                    mermaRepo.crear(nuevaMerma)
+                }
 
                 // 3. Orquestador: recálculo dinámico de semáforo, pérdidas y proyecciones
                 val resultadoRecalculo = orquestador.aplicarMerma(nuevaMerma)

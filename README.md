@@ -30,19 +30,25 @@ Aplicación Android desarrollada con **Jetpack Compose** para el control de merm
 
 | Requerimiento | Implementación |
 |---|---|
-| Autenticación | Login y registro con Firebase Authentication, rol guardado en Firestore, sesión persistente y cierre de sesión |
-| Módulo principal en Compose | Dashboard de producción, Monitor de lotes, Ingreso de lote, Registro de mermas y Panel de gerencia |
+| Autenticación | Login y registro con Firebase Authentication, inicio con Google (Credential Manager), recuperación de contraseña, rol guardado en Firestore, sesión persistente y cierre de sesión |
+| Módulo principal en Compose | Dashboard de producción, Monitor de lotes, Ingreso de lote, Registro de mermas, Panel de gerencia, Gestión de usuarios y Configuración de motores |
+| Persistencia | Productos, lotes, ventas y mermas guardados en Cloud Firestore |
+| Evidencia fotográfica | Captura con CameraX al registrar una merma |
+| Gráficas | Pérdida de los últimos 7 días y productos críticos con Vico en el Panel de gerencia |
 | Navegación | Navigation Compose con rutas tipadas, barra inferior según el rol y ruta de gerencia protegida |
 | Validaciones | Login, registro, ingreso de lote y registro de merma, con el error bajo cada campo |
 
 ### Pantallas
 
 - **Login y Registro:** validación de correo y contraseña, mensajes de error en español y mostrar/ocultar contraseña. Todo usuario nuevo se crea con rol Operativo.
+- **Inicio con Google y recuperación de contraseña:** botón "Continuar con Google" y envío del correo de restablecimiento desde el login.
 - **Dashboard de Producción:** cantidad sugerida para mañana por producto, con demanda base, margen aplicado y tasa de merma de los últimos 14 días.
 - **Monitor de Lotes:** lotes ordenados por urgencia, con semáforo de caducidad (Verde, Amarillo, Rojo, Vencido) y filtros por estado. Desde un lote vencido se abre el registro de merma con el producto y el lote ya elegidos.
 - **Ingreso de Lote:** calcula la fecha de caducidad antes de guardar y autocompleta el costo según el producto.
-- **Registro de Merma:** producto, lote, cantidad, causa y espacio para la evidencia fotográfica.
-- **Panel de Gerencia (solo administrador):** pérdida del día, pérdida del mes, índice de merma y top 5 de productos críticos.
+- **Registro de Merma:** producto, lote, cantidad, causa y foto de evidencia tomada con la cámara del dispositivo.
+- **Panel de Gerencia (solo administrador):** pérdida del día, pérdida del mes, índice de merma, top 5 de productos críticos y gráficas de pérdida diaria y de productos críticos.
+- **Gestión de Usuarios (solo administrador):** cambiar el rol y activar o desactivar usuarios. Se abre con el icono de personas del Panel de Gerencia.
+- **Configuración de Motores (solo administrador):** ajustar el margen de seguridad de la proyección. Se abre con el icono de ajustes del Panel de Gerencia.
 
 **Actualización dinámica:** al registrar una merma se descuenta el lote y se recalculan el semáforo, la proyección y las pérdidas. El cambio se ve en el monitor, el dashboard y el panel de gerencia sin reiniciar la app.
 
@@ -86,7 +92,17 @@ Son cuentas de prueba del proyecto Firebase `scrapp-ctrlcafe`. Para convertir en
 
 ### Datos de ejemplo
 
-Los datos del negocio están en memoria y se cargan al abrir la app: 7 productos, 10 lotes en distintos estados de caducidad, 35 días de ventas y 6 mermas del mes en curso. Se reinician cada vez que se cierra la app.
+Los datos del negocio se guardan en Cloud Firestore. La primera vez que la app arranca con la base vacía, `SembradorDatos` sube los datos de ejemplo: 7 productos, 10 lotes en distintos estados de caducidad, 35 días de ventas y 6 mermas del mes en curso. Después los datos se conservan entre sesiones.
+
+### Inicio con Google
+
+Para que "Continuar con Google" funcione en un equipo:
+
+1. El emulador o teléfono debe tener una cuenta de Google agregada (imagen con Google Play).
+2. La huella SHA-1 de la llave de depuración de ese equipo debe estar registrada en Firebase Console → Configuración del proyecto → app Android, y el `google-services.json` del repositorio debe estar actualizado. La SHA-1 se obtiene con:
+   ```bash
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   ```
 
 ---
 
@@ -104,15 +120,17 @@ El proyecto sigue la arquitectura **MVC** definida en la Etapa 1:
 app/src/main/java/com/ctrlcafe/scrapp/
 ├── MainActivity.kt, ScrappApp.kt
 ├── modelo/        Entidades: Producto, Lote, Merma, RegistroVenta, PerfilUsuario, Rol
-├── repositorio/   Repositorios en memoria, DatosIniciales, ContenedorDatos y AuthRepositorio (Firebase)
+├── repositorio/   ContenedorDatos, AuthRepositorio, EvidenciaRepositorio, DatosIniciales y repositorios en memoria (Etapa 2)
+│   └── firestore/ Repositorios de Firestore, ConfiguracionRepositorio, Mapeadores y SembradorDatos
 ├── servicio/      Motores: semáforo, financiero, proyección y orquestador de mermas
-├── controlador/   ViewModels: Auth, Produccion, Lote, Merma y Gerencia
+├── controlador/   ViewModels: Auth, Usuarios, Produccion, Lote, Merma y Gerencia
 ├── vista/
-│   ├── auth/          LoginScreen, RegistroScreen
+│   ├── auth/          LoginScreen, RegistroScreen, RecuperarContrasenaScreen
+│   ├── administracion/ GestionUsuariosScreen
 │   ├── produccion/    DashboardScreen
 │   ├── lotes/         MonitorLotesScreen, IngresoLoteScreen
-│   ├── mermas/        RegistroMermaScreen
-│   ├── gerencia/      PanelGerenciaScreen
+│   ├── mermas/        RegistroMermaScreen, CamaraEvidenciaScreen
+│   ├── gerencia/      PanelGerenciaScreen, ConfiguracionMotoresScreen
 │   ├── componentes/   Componentes reutilizables
 │   └── navegacion/    Rutas, ScrappNavHost, ScrappNavContainer, BarraInferior
 ├── ui/theme/      Tema Material 3: Color, Type, Theme
@@ -123,14 +141,15 @@ app/src/main/java/com/ctrlcafe/scrapp/
 
 | Componente | Función |
 |---|---|
-| `ContenedorDatos` | Crea una sola vez los repositorios y los motores. Todos los ViewModels comparten las mismas instancias. |
+| `ContenedorDatos` | Crea una sola vez los repositorios de Firestore y los motores. Todos los ViewModels comparten las mismas instancias. |
+| `SembradorDatos` | Sube los datos de ejemplo a Firestore si la base está vacía. |
 | `MotorProyeccion` | Calcula la producción sugerida: promedio ponderado de 4 semanas, más el margen de seguridad, menos la tasa de merma. |
 | `MotorSemaforo` | Asigna el estado de caducidad de cada lote según las horas restantes. |
 | `MotorFinanciero` | Calcula la pérdida del día y del mes, el índice de merma y los productos críticos. |
 | `OrquestadorMerma` | Tras registrar una merma, recalcula el semáforo, las pérdidas y la proyección. |
-| `AuthRepositorio` | Login, registro y cierre de sesión con Firebase. Traduce los errores de Firebase a mensajes en español. |
+| `AuthRepositorio` | Login, registro, inicio con Google, recuperación de contraseña y cierre de sesión con Firebase. Traduce los errores de Firebase a mensajes en español. |
 | `Validador` | Validaciones reutilizables de los formularios. |
-| `vista/componentes/` | `ScrappTextField`, `BotonPrimario`, `TopBarScrapp`, `ChipSemaforo`, `TarjetaProducto`, `EstadoVacio`, `DialogoConfirmacion` y `BotonCerrarSesion`. |
+| `vista/componentes/` | `ScrappTextField`, `BotonPrimario`, `TopBarScrapp`, `ChipSemaforo`, `TarjetaProducto`, `EstadoVacio`, `DialogoConfirmacion`, `BotonCerrarSesion` y `MiniaturaEvidencia`. |
 
 ---
 
@@ -142,22 +161,18 @@ app/src/main/java/com/ctrlcafe/scrapp/
 | Interfaz | Jetpack Compose, Material 3 |
 | Navegación | Navigation Compose |
 | Estado | ViewModel, StateFlow, corrutinas |
-| Autenticación | Firebase Authentication |
-| Perfiles y roles | Cloud Firestore |
+| Autenticación | Firebase Authentication, Credential Manager (Google Sign-In) |
+| Datos, perfiles y roles | Cloud Firestore |
+| Cámara | CameraX |
+| Imágenes | Coil |
+| Gráficas | Vico |
 
 ## Firebase
 
 - Cada usuario tiene un documento `usuarios/{uid}` con `nombre`, `correo`, `rol` (`OPERATIVO` o `ADMINISTRADOR`) y `activo`.
-- Las reglas están en [`firestore.rules`](firestore.rules), fuera de modo test: cada usuario lee su propio documento, el registro solo crea perfiles `OPERATIVO` y solo un administrador puede cambiar `rol` o `activo`.
+- Los datos del negocio están en las colecciones `productos`, `lotes`, `ventas` y `mermas`, y los parámetros de los motores en `configuracion/motores`.
+- Las reglas están en [`firestore.rules`](firestore.rules), fuera de modo test: cada usuario lee su propio documento, el registro solo crea perfiles `OPERATIVO`, solo un administrador puede cambiar `rol` o `activo` y un usuario inactivo no lee ni escribe nada.
 
 ## Registro de errores
 
 `Logger` escribe en Logcat (etiqueta `Scrapp`) y en `filesDir/logs/errores.log`, que se puede revisar desde **Device Explorer** en `/data/data/com.ctrlcafe.scrapp/files/logs/`.
-
----
-
-## Próximos avances
-
-- Guardar los datos del negocio (productos, lotes, ventas y mermas) en Cloud Firestore.
-- Capturar la evidencia fotográfica de las mermas con CameraX.
-- Agregar gráficas al Panel de Gerencia.

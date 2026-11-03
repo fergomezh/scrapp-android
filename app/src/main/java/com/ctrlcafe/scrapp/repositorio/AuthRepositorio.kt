@@ -1,5 +1,8 @@
 package com.ctrlcafe.scrapp.repositorio
 
+import android.content.Context
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.modelo.Rol
 import com.ctrlcafe.scrapp.util.ContrasenaDebilException
@@ -18,22 +21,23 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 /**
  * Autenticación con Firebase Auth + perfil y rol en Firestore (`usuarios/{uid}`).
- *
- * Todas las operaciones devuelven [Result]. En caso de fallo, la excepción es
- * siempre una [ScrappException] con el mensaje listo para mostrar en pantalla,
- * así el ViewModel no necesita conocer las clases de Firebase.
- *
- * La sesión la persiste Firebase: si [usuarioActual] no es null al abrir la app,
- * no hace falta volver a pedir login.
+ * Actualizado para Etapa 3, Avance 2: soporte de Google Sign-In, recuperación
+ * de clave y sincronización en tiempo real de cuentas activas/inactivas.
  */
 class AuthRepositorio(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -41,14 +45,11 @@ class AuthRepositorio(
 ) {
     private val usuarios get() = db.collection(COLECCION_USUARIOS)
 
-    /** Usuario con sesión abierta, o null si nadie ha iniciado sesión. */
     val usuarioActual: FirebaseUser? get() = auth.currentUser
-
     val haySesion: Boolean get() = auth.currentUser != null
 
     /**
-     * Inicia sesión y devuelve el perfil. Si el usuario está desactivado en
-     * Firestore, cierra la sesión y falla con [UsuarioDesactivadoException].
+     * Inicia sesión tradicional con correo y contraseña.
      */
     suspend fun iniciarSesion(correo: String, contrasena: String): Result<PerfilUsuario> = ejecutar("iniciarSesion") {
         val resultado = auth.signInWithEmailAndPassword(correo.trim(), contrasena).await()
@@ -58,17 +59,16 @@ class AuthRepositorio(
             auth.signOut()
             throw UsuarioDesactivadoException()
         }
-        Logger.info(AuthRepositorio::class.java, "Sesión iniciada: $uid (${perfil.rol})")
+        Logger.info(AuthRepositorio::class.java, "Sesión iniciada con correo: $uid (${perfil.rol})")
         perfil
     }
 
     /**
-     * Crea la cuenta y su documento en Firestore. Todo usuario nuevo es
-     * [Rol.OPERATIVO]; solo un administrador puede cambiar el rol después.
+     * Registra un nuevo usuario con correo y contraseña. Todo usuario nuevo inicia como OPERATIVO.
      */
     suspend fun registrar(nombre: String, correo: String, contrasena: String): Result<PerfilUsuario> = ejecutar("registrar") {
         val resultado = auth.createUserWithEmailAndPassword(correo.trim(), contrasena).await()
-        val usuario = resultado.user ?: throw ErrorAutenticacionException("no se creó el usuario")
+        val usuario = resultado.user ?: throw ErrorAutenticacionException("No se creó el usuario")
 
         val perfil = PerfilUsuario(
             uid = usuario.uid,
@@ -79,11 +79,13 @@ class AuthRepositorio(
         )
 
         try {
-            usuarios.document(perfil.uid).set(aMapa(perfil)).await()
+            val mapa = aMapa(perfil).toMutableMap().apply {
+                put(CAMPO_PROVEEDOR, "password")
+                put(CAMPO_CREADO_EN, FieldValue.serverTimestamp())
+            }
+            usuarios.document(perfil.uid).set(mapa).await()
             usuario.updateProfile(userProfileChangeRequest { displayName = perfil.nombre }).await()
         } catch (e: Exception) {
-            // Sin documento en Firestore la cuenta quedaría sin rol: la borramos
-            // para que el usuario pueda volver a registrarse con el mismo correo.
             runCatching { usuario.delete().await() }
             throw e
         }
@@ -92,25 +94,101 @@ class AuthRepositorio(
         perfil
     }
 
-    fun cerrarSesion() {
-        Logger.info(AuthRepositorio::class.java, "Sesión cerrada: ${auth.currentUser?.uid}")
-        auth.signOut()
+    /**
+     * Autenticación con Google vía Credential Manager. Si no existe en Firestore,
+     * crea el perfil con rol OPERATIVO y proveedor "google".
+     */
+    suspend fun autenticarConGoogle(idToken: String): Result<PerfilUsuario> = ejecutar("autenticarConGoogle") {
+        val credencial = GoogleAuthProvider.getCredential(idToken, null)
+        val resultado = auth.signInWithCredential(credencial).await()
+        val usuario = resultado.user ?: throw ErrorAutenticacionException("Fallo al autenticar con Google")
+
+        val docRef = usuarios.document(usuario.uid)
+        val doc = docRef.get().await()
+
+        val perfil: PerfilUsuario
+        if (!doc.exists()) {
+            perfil = PerfilUsuario(
+                uid = usuario.uid,
+                nombre = usuario.displayName ?: "Usuario Google",
+                correo = usuario.email ?: "",
+                rol = Rol.OPERATIVO,
+                activo = true
+            )
+            val mapa = mapOf(
+                CAMPO_NOMBRE to perfil.nombre,
+                CAMPO_CORREO to perfil.correo,
+                CAMPO_ROL to perfil.rol.name,
+                CAMPO_ACTIVO to perfil.activo,
+                CAMPO_PROVEEDOR to "google",
+                CAMPO_CREADO_EN to FieldValue.serverTimestamp()
+            )
+            docRef.set(mapa).await()
+            Logger.info(AuthRepositorio::class.java, "Perfil nuevo creado desde Google: ${usuario.uid}")
+        } else {
+            perfil = desdeDocumento(doc)
+            if (!perfil.activo) {
+                auth.signOut()
+                throw UsuarioDesactivadoException()
+            }
+        }
+        perfil
     }
 
-    /** Perfil completo del usuario indicado. */
+    /**
+     * Envía correo de recuperación de contraseña de Firebase.
+     */
+    suspend fun recuperarContrasena(correo: String): Result<Unit> = ejecutar("recuperarContrasena") {
+        auth.sendPasswordResetEmail(correo.trim()).await()
+        Logger.info(AuthRepositorio::class.java, "Correo de recuperación enviado a: $correo")
+    }
+
+    /**
+     * Cierra la sesión en Firebase y limpia el estado del Credential Manager para Google.
+     */
+    suspend fun cerrarSesion(contexto: Context? = null) {
+        val uid = auth.currentUser?.uid
+        auth.signOut()
+        if (contexto != null) {
+            runCatching {
+                val credManager = CredentialManager.create(contexto)
+                credManager.clearCredentialState(ClearCredentialStateRequest())
+            }
+        }
+        Logger.info(AuthRepositorio::class.java, "Sesión cerrada: $uid")
+    }
+
+    /**
+     * Escucha en tiempo real si el usuario actual fue desactivado por el administrador.
+     */
+    fun observarEstadoUsuarioActual(): Flow<Boolean> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(false)
+            close()
+            return@callbackFlow
+        }
+
+        val listener: ListenerRegistration = usuarios.document(uid).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val activo = snapshot?.getBoolean(CAMPO_ACTIVO) ?: true
+            trySend(activo)
+        }
+
+        awaitClose { listener.remove() }
+    }
+
     suspend fun obtenerPerfil(uid: String): Result<PerfilUsuario> = ejecutar("obtenerPerfil") {
         leerPerfil(uid)
     }
 
-    /** Rol guardado en `usuarios/{uid}`. */
     suspend fun obtenerRol(uid: String): Result<Rol> = ejecutar("obtenerRol") {
         leerPerfil(uid).rol
     }
 
-    /**
-     * Perfil del usuario con sesión abierta, para decidir la pantalla inicial
-     * al abrir la app. Devuelve éxito con null si no hay sesión.
-     */
     suspend fun perfilActual(): Result<PerfilUsuario?> {
         val uid = auth.currentUser?.uid ?: return Result.success(null)
         return obtenerPerfil(uid)
@@ -122,7 +200,6 @@ class AuthRepositorio(
         return desdeDocumento(doc)
     }
 
-    /** Ejecuta [bloque] y convierte cualquier error en una [ScrappException]. */
     private suspend fun <T> ejecutar(operacion: String, bloque: suspend () -> T): Result<T> =
         try {
             Result.success(bloque())
@@ -137,7 +214,6 @@ class AuthRepositorio(
     private fun traducir(e: Exception): ScrappException = when (e) {
         is ScrappException -> e
         is FirebaseNetworkException -> SinConexionException()
-        // WeakPassword hereda de InvalidCredentials: debe ir antes.
         is FirebaseAuthWeakPasswordException -> ContrasenaDebilException()
         is FirebaseAuthInvalidCredentialsException -> CredencialesInvalidasException()
         is FirebaseAuthInvalidUserException ->
@@ -152,11 +228,12 @@ class AuthRepositorio(
 
     companion object {
         const val COLECCION_USUARIOS = "usuarios"
-
         private const val CAMPO_NOMBRE = "nombre"
         private const val CAMPO_CORREO = "correo"
         private const val CAMPO_ROL = "rol"
         private const val CAMPO_ACTIVO = "activo"
+        private const val CAMPO_PROVEEDOR = "proveedor"
+        private const val CAMPO_CREADO_EN = "creadoEn"
 
         private fun aMapa(perfil: PerfilUsuario): Map<String, Any> = mapOf(
             CAMPO_NOMBRE to perfil.nombre,

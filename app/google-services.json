@@ -12,7 +12,20 @@
           "package_name": "com.ctrlcafe.scrapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "183827593395-o18jog4f8t0fu35talkk9bgl20jb055p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ctrlcafe.scrapp",
+            "certificate_hash": "126c8b4df1d4e202e32e62d14793f22aaa22475f"
+          }
+        },
+        {
+          "client_id": "183827593395-jjvhvpu41n8bh422na6vgp5q2j66mmm8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDrOgdMkRkQic5b3diS6pKQGEYQrcxAfA8"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "183827593395-jjvhvpu41n8bh422na6vgp5q2j66mmm8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

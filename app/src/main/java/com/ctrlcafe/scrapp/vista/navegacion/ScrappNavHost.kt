@@ -20,7 +20,9 @@ import com.ctrlcafe.scrapp.controlador.AuthViewModel
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.vista.auth.LoginScreen
 import com.ctrlcafe.scrapp.vista.auth.RecuperarContrasenaScreen
+import com.ctrlcafe.scrapp.vista.administracion.CatalogoProductosScreen
 import com.ctrlcafe.scrapp.vista.administracion.GestionUsuariosScreen
+import com.ctrlcafe.scrapp.vista.historial.HistorialScreen
 import com.ctrlcafe.scrapp.vista.auth.RegistroScreen
 import com.ctrlcafe.scrapp.vista.gerencia.ConfiguracionMotoresScreen
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
@@ -139,13 +141,22 @@ fun ScrappNavHost(
         }
 
         composable(Rutas.IngresoLote.route) {
-            IngresoLoteScreen(onVolver = { navController.popBackStack() })
+            IngresoLoteScreen(
+                usuarioId = usuarioActual?.uid.orEmpty(),
+                onVolver = { navController.popBackStack() }
+            )
+        }
+
+        // Historial de mermas y de lotes: los dos roles (el operativo solo ve sus mermas)
+        composable(RutasBottom.Historial.route) {
+            HistorialScreen(usuario = usuarioActual)
         }
 
         composable(RutasBottom.Mermas.route) {
             RegistroMermaScreen(
                 viewModel = viewModel(),
-                usuarioId = usuarioActual?.uid.orEmpty()
+                usuarioId = usuarioActual?.uid.orEmpty(),
+                nombreUsuario = usuarioActual?.nombre.orEmpty()
             )
         }
 
@@ -159,6 +170,7 @@ fun ScrappNavHost(
             RegistroMermaScreen(
                 viewModel = viewModel(),
                 usuarioId = usuarioActual?.uid.orEmpty(),
+                nombreUsuario = usuarioActual?.nombre.orEmpty(),
                 productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID),
                 lotePreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_LOTE_ID),
                 onVolver = { navController.popBackStack() }
@@ -186,6 +198,17 @@ fun ScrappNavHost(
                 GestionUsuariosScreen(
                     viewModel = viewModel(),
                     uidAdminActual = usuarioActual?.uid.orEmpty(),
+                    onVolver = { navController.popBackStack() }
+                )
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            }
+        }
+
+        composable(RutasBottom.CatalogoProductos.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                CatalogoProductosScreen(
+                    adminUid = usuarioActual.uid,
                     onVolver = { navController.popBackStack() }
                 )
             } else {

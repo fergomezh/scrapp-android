@@ -3,14 +3,21 @@ package com.ctrlcafe.scrapp.repositorio.firestore
 import com.ctrlcafe.scrapp.modelo.CausaMerma
 import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.repositorio.Repositorio
+import com.ctrlcafe.scrapp.servicio.RegistroMermaAtomico
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import java.time.LocalDate
 
-class FirestoreMermaRepositorio : Repositorio<Merma> {
+class FirestoreMermaRepositorio : Repositorio<Merma>, RegistroMermaAtomico {
 
     private val db = FirebaseFirestore.getInstance()
     private val coleccion = db.collection("mermas")
@@ -18,31 +25,47 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
     private val _mermasFlow = MutableStateFlow<List<Merma>>(emptyList())
     val mermasFlow: StateFlow<List<Merma>> = _mermasFlow.asStateFlow()
 
+    private val escucha = EscuchaFirestore<QuerySnapshot>("mermas") { snapshot ->
+        _mermasFlow.value = snapshot.documents.map { it.aMerma() }
+    }
+
     init {
-        coleccion.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null) return@addSnapshotListener
+        // Las reglas solo dejan al operativo leer sus propias mermas, y Firestore rechaza
+        // completa una consulta sin ese filtro. Por eso la consulta depende del rol.
+        SesionFirestore.alCambiarUsuario { uid ->
+            escucha.detener()
+            _mermasFlow.value = emptyList()
+            if (uid == null) return@alCambiarUsuario
 
-            val lista = snapshot.documents.mapNotNull { doc ->
-                // Usamos runCatching por seguridad al mapear el Enum de la base de datos
-                val causaDb = doc.getString("causa") ?: ""
-                val causaMapeada = runCatching { CausaMerma.valueOf(causaDb) }.getOrElse { CausaMerma.values().first() }
-
-                Merma(
-                    id = doc.id,
-                    loteId = doc.getString("loteId") ?: "",
-                    productoId = doc.getString("productoId") ?: "",
-                    cantidad = doc.getDouble("cantidad") ?: 0.0,
-                    costoUnitarioCongelado = doc.getDouble("costoUnitarioCongelado") ?: 0.0,
-                    fecha = doc.getTimestamp("fecha")?.aLocalDate() ?: LocalDate.now(),
-                    causa = causaMapeada,
-                    rutaEvidencia = doc.getString("urlEvidencia") ?: "", // Firestore usa urlEvidencia
-                    usuarioId = doc.getString("usuarioId") ?: "",
-                    nombreUsuario = doc.getString("nombreUsuario") ?: "",
-                    creadoEn = doc.getTimestamp("creadoEn")?.aLocalDate()
-                )
-            }
-            _mermasFlow.value = lista
+            db.collection("usuarios").document(uid).get()
+                .addOnCompleteListener { tarea ->
+                    // Si el perfil todavía no existe (recién registrado) se asume el rol con menos permisos
+                    val esAdmin = tarea.isSuccessful && tarea.result?.getString("rol") == "ADMINISTRADOR"
+                    // Si mientras tanto cambió la sesión, esta respuesta ya no aplica
+                    if (FirebaseAuth.getInstance().currentUser?.uid != uid) return@addOnCompleteListener
+                    escucha.iniciar(if (esAdmin) coleccion else coleccion.whereEqualTo("usuarioId", uid))
+                }
         }
+    }
+
+    /**
+     * Mermas en tiempo real para el historial (Integrante 3).
+     *
+     * Con [usuarioId] se consulta solo lo registrado por ese usuario: las reglas no
+     * dejan al operativo leer mermas ajenas, y una consulta sin ese filtro se rechaza
+     * completa. Con `null` (administrador) se escucha toda la colección.
+     * El orden por fecha se hace en el cliente para no requerir un índice compuesto.
+     */
+    fun observarMermas(usuarioId: String?): Flow<List<Merma>> = callbackFlow {
+        val consulta = if (usuarioId == null) coleccion else coleccion.whereEqualTo("usuarioId", usuarioId)
+        val listener = consulta.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            trySend(snapshot?.documents?.map { it.aMerma() }.orEmpty())
+        }
+        awaitClose { listener.remove() }
     }
 
     override fun listar(): List<Merma> = _mermasFlow.value
@@ -60,7 +83,7 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
      * Transacción acordada con el Integrante 3 para OrquestadorMerma.
      * Garantiza que la merma se guarda Y el lote se descuenta al mismo tiempo.
      */
-    fun registrarMermaYDescontarLote(merma: Merma, nuevaCantidadDisponibleLote: Double): Merma {
+    override fun registrarMermaYDescontarLote(merma: Merma, nuevaCantidadDisponibleLote: Double): Merma {
         val batch = db.batch()
 
         // Respeta el id que ya trae la merma: OrquestadorMerma la busca por ese id justo después
@@ -84,6 +107,26 @@ class FirestoreMermaRepositorio : Repositorio<Merma> {
         if (_mermasFlow.value.none { it.id == merma.id }) {
             _mermasFlow.value = _mermasFlow.value + merma
         }
+    }
+
+    private fun DocumentSnapshot.aMerma(): Merma {
+        // Usamos runCatching por seguridad al mapear el Enum de la base de datos
+        val causaDb = getString("causa") ?: ""
+        val causaMapeada = runCatching { CausaMerma.valueOf(causaDb) }.getOrElse { CausaMerma.values().first() }
+
+        return Merma(
+            id = id,
+            loteId = getString("loteId") ?: "",
+            productoId = getString("productoId") ?: "",
+            cantidad = getDouble("cantidad") ?: 0.0,
+            costoUnitarioCongelado = getDouble("costoUnitarioCongelado") ?: 0.0,
+            fecha = getTimestamp("fecha")?.aLocalDate() ?: LocalDate.now(),
+            causa = causaMapeada,
+            rutaEvidencia = getString("urlEvidencia") ?: "", // Firestore usa urlEvidencia
+            usuarioId = getString("usuarioId") ?: "",
+            nombreUsuario = getString("nombreUsuario") ?: "",
+            creadoEn = getTimestamp("creadoEn")?.aLocalDate()
+        )
     }
 
     private fun mapearDatos(merma: Merma) = hashMapOf(

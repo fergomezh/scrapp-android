@@ -33,12 +33,17 @@ object ContenedorDatos {
     val authRepositorio: AuthRepositorio by lazy { AuthRepositorio() }
 
     init {
-        // 3. Sembrar datos automáticamente si la base en la nube está vacía
-        SembradorDatos.sembrarSiEstaVacio(
-            productoRepositorio,
-            loteRepositorio,
-            ventaRepositorio,
-            mermaRepositorio
-        )
+        // 3. Sembrar datos automáticamente si la base en la nube está vacía. Se espera a que
+        //    haya sesión: este objeto se crea antes del login y las reglas rechazan la consulta.
+        SesionFirestore.alCambiarUsuario { uid ->
+            if (uid != null) {
+                SembradorDatos.sembrarSiEstaVacio(
+                    productoRepositorio,
+                    loteRepositorio,
+                    ventaRepositorio,
+                    mermaRepositorio
+                )
+            }
+        }
     }
 }

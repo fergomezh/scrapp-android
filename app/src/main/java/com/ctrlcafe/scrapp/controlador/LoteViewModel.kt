@@ -2,20 +2,25 @@ package com.ctrlcafe.scrapp.controlador
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ctrlcafe.scrapp.modelo.EstadoCaducidad
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.Repositorio
+import com.ctrlcafe.scrapp.repositorio.firestore.FirestoreLoteRepositorio
 import com.ctrlcafe.scrapp.servicio.EstadoLote
 import com.ctrlcafe.scrapp.servicio.MotorSemaforo
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -45,8 +50,11 @@ data class IngresoLoteFormState(
     val errorCosto: String? = null,
     val errorFechaIngreso: String? = null,
     val errorVidaUtil: String? = null,
+    val guardando: Boolean = false,
     val guardadoExitoso: Boolean = false,
-    val ultimoLoteCreadoId: String? = null
+    val ultimoLoteCreadoId: String? = null,
+    /** Se guardó sin conexión: queda en el dispositivo y Firestore lo sincroniza al volver la red. */
+    val guardadoSinConexion: Boolean = false
 )
 
 /**
@@ -81,25 +89,32 @@ class LoteViewModel(
     private val motorSemaforo: MotorSemaforo = ProveedorDependenciasModuloPrincipal.motorSemaforo,
     // MODIFIED: Replaced explicit repository types with generic Repositorio interface
     private val loteRepositorio: Repositorio<Lote> = ProveedorDependenciasModuloPrincipal.loteRepositorio,
-    private val productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio
+    private val productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio,
+    // Emite cada vez que cambian lotes o productos en Firestore (de este u otro dispositivo)
+    private val cambiosDatos: Flow<Unit> = ProveedorDependenciasModuloPrincipal.cambiosLotes
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoteUiState(cargando = true))
     val uiState: StateFlow<LoteUiState> = _uiState.asStateFlow()
 
     init {
-        recalcularSemaforo()
+        // Tiempo real: el monitor se recalcula solo cuando otro dispositivo registra una merma o un lote
+        viewModelScope.launch {
+            cambiosDatos.collect { recalcularSemaforo() }
+        }
     }
 
     /**
      * Recalcula el estado del semáforo de todos los lotes activos ordenados por urgencia.
-     * Se invoca al abrir MonitorLotesScreen y al regresar desde RegistroMermaScreen
-     * o IngresoLoteScreen para reflejar cambios en tiempo real.
+     * Lo dispara el listener de Firestore y también MonitorLotesScreen al volver a primer
+     * plano, porque las horas restantes cambian aunque no lleguen datos nuevos.
      */
     fun recalcularSemaforo() {
-        _uiState.update { it.copy(cargando = true, mensajeError = null) }
+        // El indicador de carga solo aparece la primera vez; las actualizaciones en vivo no parpadean
+        _uiState.update { it.copy(cargando = it.lotes.isEmpty(), mensajeError = null) }
         try {
-            val productos = productoRepositorio.listar()
+            // Los productos desactivados desde el catálogo no se ofrecen para ingresar lotes nuevos
+            val productos = productoRepositorio.listar().filter { it.activo }
             val lotesActualizados = motorSemaforo.recalcularTodos(incluirAgotados = false)
             val conteo = motorSemaforo.conteoPorEstado()
 
@@ -213,13 +228,12 @@ class LoteViewModel(
     }
 
     /**
-     * Valida todos los campos del formulario y, si son correctos, crea el lote en el
-     * repositorio y recalcula el semáforo inmediatamente.
-     *
-     * @return true si el lote fue validado y guardado con éxito.
+     * Valida todos los campos del formulario y, si son correctos, crea el lote en Firestore
+     * con [usuarioId] como `creadoPor`. El monitor se actualiza solo por el listener.
      */
-    fun guardarLote(): Boolean {
+    fun guardarLote(usuarioId: String) {
         val form = _uiState.value.formulario
+        if (form.guardando) return
 
         val errorProducto = validarCampoObligatorio(form.productoId, "Seleccione un producto")
         val errorCantidad = validarNumeroPositivoDecimal(form.cantidadTexto, "La cantidad")
@@ -248,64 +262,93 @@ class LoteViewModel(
                     )
                 )
             }
-            return false
+            return
         }
 
-        return try {
-            val cantidad = form.cantidadTexto.trim().toDouble()
-            val costo = form.costoUnitarioTexto.trim().toDouble()
-            val fechaIngreso = LocalDate.parse(form.fechaIngresoTexto.trim())
-            val vidaUtil = form.vidaUtilDiasTexto.trim().toInt()
-            val fechaCaducidad = fechaIngreso.plusDays(vidaUtil.toLong())
-            val nuevoId = generarSiguienteIdLote()
+        if (usuarioId.isBlank()) {
+            _uiState.update { it.copy(mensajeError = "No hay una sesión activa. Vuelva a iniciar sesión.") }
+            return
+        }
 
-            val nuevoLote = Lote(
-                id = nuevoId,
-                productoId = form.productoId,
-                cantidadInicial = cantidad,
-                cantidadDisponible = cantidad,
-                costoUnitario = costo,
-                fechaIngreso = fechaIngreso,
-                vidaUtilDias = vidaUtil,
-                fechaCaducidad = fechaCaducidad,
-                estado = EstadoCaducidad.Vigente
-            )
+        _uiState.update { it.copy(formulario = it.formulario.copy(guardando = true), mensajeError = null) }
 
-            loteRepositorio.crear(nuevoLote)
-            motorSemaforo.recalcular(nuevoLote)
-
-            Logger.info(
-                LoteViewModel::class.java,
-                "Nuevo lote registrado: $nuevoId (producto=${form.productoId}, caduca=$fechaCaducidad)"
-            )
-
-            // Actualizamos lista de lotes y reiniciamos el formulario marcando éxito
-            val lotesActualizados = motorSemaforo.recalcularTodos(incluirAgotados = false)
-            val conteoActualizado = motorSemaforo.conteoPorEstado()
-
-            _uiState.update { estado ->
-                estado.copy(
-                    lotes = lotesActualizados,
-                    conteoPorEstado = conteoActualizado,
-                    formulario = IngresoLoteFormState(
-                        fechaIngresoTexto = LocalDate.now().toString(),
-                        guardadoExitoso = true,
-                        ultimoLoteCreadoId = nuevoId
-                    ),
-                    mensajeError = null
+        viewModelScope.launch {
+            try {
+                guardarLoteValidado(form, usuarioId)
+            } catch (e: Exception) {
+                Logger.registrar(
+                    NivelLog.ERROR,
+                    LoteViewModel::class.java,
+                    "Error al guardar lote: ${e.message}"
                 )
+                _uiState.update {
+                    it.copy(
+                        formulario = it.formulario.copy(guardando = false),
+                        mensajeError = traducirErrorGuardado(e)
+                    )
+                }
             }
+        }
+    }
+
+    private suspend fun guardarLoteValidado(form: IngresoLoteFormState, usuarioId: String) {
+        val cantidad = form.cantidadTexto.trim().toDouble()
+        val costo = form.costoUnitarioTexto.trim().toDouble()
+        val fechaIngreso = LocalDate.parse(form.fechaIngresoTexto.trim())
+        val vidaUtil = form.vidaUtilDiasTexto.trim().toInt()
+        val fechaCaducidad = fechaIngreso.plusDays(vidaUtil.toLong())
+        val nuevoId = generarSiguienteIdLote()
+
+        val nuevoLote = Lote(
+            id = nuevoId,
+            productoId = form.productoId,
+            cantidadInicial = cantidad,
+            cantidadDisponible = cantidad,
+            costoUnitario = costo,
+            fechaIngreso = fechaIngreso,
+            vidaUtilDias = vidaUtil,
+            fechaCaducidad = fechaCaducidad,
+            estado = EstadoCaducidad.Vigente,
+            creadoPor = usuarioId
+        )
+
+        // Con Firestore se espera la confirmación del servidor para mostrar errores de reglas o red.
+        // Sin conexión la escritura queda en la caché local y se sincroniza sola al volver la red.
+        val confirmado = if (loteRepositorio is FirestoreLoteRepositorio) {
+            withTimeoutOrNull(TIEMPO_ESPERA_GUARDADO_MS) { loteRepositorio.crearConfirmado(nuevoLote) } != null
+        } else {
+            loteRepositorio.crear(nuevoLote)
             true
-        } catch (e: Exception) {
-            Logger.registrar(
-                NivelLog.ERROR,
-                LoteViewModel::class.java,
-                "Error al guardar lote: ${e.message}"
+        }
+
+        Logger.info(
+            LoteViewModel::class.java,
+            "Nuevo lote registrado: $nuevoId (producto=${form.productoId}, caduca=$fechaCaducidad, " +
+                "creadoPor=$usuarioId, confirmado=$confirmado)"
+        )
+
+        // Reiniciamos el formulario marcando éxito; el monitor lo refleja por el listener
+        _uiState.update { estado ->
+            estado.copy(
+                formulario = IngresoLoteFormState(
+                    fechaIngresoTexto = LocalDate.now().toString(),
+                    guardadoExitoso = true,
+                    ultimoLoteCreadoId = nuevoId,
+                    guardadoSinConexion = !confirmado
+                ),
+                mensajeError = null
             )
-            _uiState.update {
-                it.copy(mensajeError = e.message ?: "No se pudo guardar el lote.")
-            }
-            false
+        }
+    }
+
+    private fun traducirErrorGuardado(e: Exception): String {
+        val mensaje = e.message.orEmpty()
+        return when {
+            mensaje.contains("PERMISSION_DENIED", ignoreCase = true) ->
+                "No tiene permiso para registrar lotes. Verifique que su cuenta esté activa."
+            mensaje.contains("UNAVAILABLE", ignoreCase = true) ->
+                "No hay conexión con el servidor. Intente de nuevo."
+            else -> "No se pudo guardar el lote. ${mensaje.ifBlank { "Intente de nuevo." }}"
         }
     }
 
@@ -400,15 +443,20 @@ class LoteViewModel(
             motorSemaforo: MotorSemaforo = ProveedorDependenciasModuloPrincipal.motorSemaforo,
             // MODIFIED: Replaced explicit repository types with generic Repositorio interface
             loteRepositorio: Repositorio<Lote> = ProveedorDependenciasModuloPrincipal.loteRepositorio,
-            productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio
+            productoRepositorio: Repositorio<Producto> = ProveedorDependenciasModuloPrincipal.productoRepositorio,
+            cambiosDatos: Flow<Unit> = ProveedorDependenciasModuloPrincipal.cambiosLotes
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 LoteViewModel(
                     motorSemaforo = motorSemaforo,
                     loteRepositorio = loteRepositorio,
-                    productoRepositorio = productoRepositorio
+                    productoRepositorio = productoRepositorio,
+                    cambiosDatos = cambiosDatos
                 )
             }
         }
+
+        /** Tiempo máximo esperando la confirmación del servidor antes de asumir modo sin conexión. */
+        private const val TIEMPO_ESPERA_GUARDADO_MS = 8_000L
     }
 }

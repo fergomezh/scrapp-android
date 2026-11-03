@@ -8,7 +8,6 @@ import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.repositorio.Repositorio
-import com.ctrlcafe.scrapp.repositorio.firestore.FirestoreMermaRepositorio
 import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 import com.ctrlcafe.scrapp.servicio.ResultadoRecalculo
 import com.ctrlcafe.scrapp.util.CantidadInvalidaException
@@ -63,7 +62,9 @@ class MermaViewModel(
         causa: CausaMerma,
         fecha: LocalDate,
         rutaEvidencia: String,
-        usuarioId: String
+        usuarioId: String,
+        // Va desnormalizado en la merma para que el historial no consulte `usuarios` por fila
+        nombreUsuario: String = ""
     ) {
         viewModelScope.launch {
             _estadoUi.value = MermaEstadoUi.Guardando
@@ -78,32 +79,23 @@ class MermaViewModel(
                     throw CantidadInvalidaException("La cantidad ($cantidad) supera las existencias del lote (${lote.cantidadDisponible}).")
                 }
 
-                // 1. Congelar costo y descontar existencias en el lote (en memoria; se persiste en el paso 2)
-                val costoCongelado = lote.costoUnitario
-                lote.cantidadDisponible -= cantidad
-
-                // 2. Persistir la merma y el descuento del lote juntos
+                // 1. Congelar el costo del lote en la merma
                 val nuevaMerma = Merma(
                     id = "MER-${UUID.randomUUID().toString().take(6).uppercase()}",
                     loteId = lote.id,
                     productoId = lote.productoId,
                     cantidad = cantidad,
-                    costoUnitarioCongelado = costoCongelado,
+                    costoUnitarioCongelado = lote.costoUnitario,
                     fecha = fecha,
                     causa = causa,
                     rutaEvidencia = rutaEvidencia.ifBlank { "sin_evidencia.jpg" },
-                    usuarioId = usuarioId
+                    usuarioId = usuarioId,
+                    nombreUsuario = nombreUsuario
                 )
-                if (mermaRepo is FirestoreMermaRepositorio) {
-                    // WriteBatch: nunca queda una merma sin su descuento de lote, ni al revés
-                    mermaRepo.registrarMermaYDescontarLote(nuevaMerma, lote.cantidadDisponible)
-                } else {
-                    loteRepo.actualizar(lote.id, lote)
-                    mermaRepo.crear(nuevaMerma)
-                }
 
-                // 3. Orquestador: recálculo dinámico de semáforo, pérdidas y proyecciones
-                val resultadoRecalculo = orquestador.aplicarMerma(nuevaMerma)
+                // 2. Orquestador: descuenta el lote, guarda merma + lote en un WriteBatch
+                //    y recalcula semáforo, pérdidas y proyecciones
+                val resultadoRecalculo = orquestador.registrarMerma(nuevaMerma)
                 Logger.info(MermaViewModel::class.java, "Merma registrada con éxito: ${nuevaMerma.id}")
 
                 _estadoUi.value = MermaEstadoUi.Exito(resultadoRecalculo)

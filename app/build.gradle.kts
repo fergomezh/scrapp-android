@@ -73,8 +73,24 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
     // Google Sign-In con Credential Manager
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // 1. Motor Gráfico Vico con Ortografía Correcta (Líneas y Barras)
+    implementation("com.patrykandpatrick.vico:compose:1.15.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.15.0")
+    implementation("com.patrykandpatrick.vico:core:1.15.0")
+
+    // 2. Hardware de Cámara (CameraX)
+    val versionCameraX = "1.3.4"
+    implementation("androidx.camera:camera-core:$versionCameraX")
+    implementation("androidx.camera:camera-camera2:$versionCameraX")
+    implementation("androidx.camera:camera-lifecycle:$versionCameraX")
+    implementation("androidx.camera:camera-view:$versionCameraX")
+
+    // 3. Carga y renderizado asíncrono de Imágenes (Coil)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

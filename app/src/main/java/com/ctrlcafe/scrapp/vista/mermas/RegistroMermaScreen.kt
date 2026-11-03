@@ -1,5 +1,6 @@
 package com.ctrlcafe.scrapp.vista.mermas
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +58,7 @@ import com.ctrlcafe.scrapp.modelo.CausaMerma
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.util.Validador
+import com.ctrlcafe.scrapp.vista.componentes.MiniaturaEvidencia
 import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 import java.time.LocalDate
 
@@ -89,6 +91,7 @@ fun RegistroMermaScreen(
     var errorCantidad by remember { mutableStateOf<String?>(null) }
 
     var rutaEvidencia by remember { mutableStateOf("") }
+    var mostrarCamara by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -118,6 +121,18 @@ fun RegistroMermaScreen(
         if (estadoUi is MermaEstadoUi.Error) {
             snackbarHostState.showSnackbar((estadoUi as MermaEstadoUi.Error).mensaje)
         }
+    }
+
+    // La cámara ocupa toda la pantalla; la foto se guarda en el dispositivo y su ruta queda como evidencia
+    if (mostrarCamara) {
+        CamaraEvidenciaScreen(
+            onImagenConfirmada = { archivo ->
+                rutaEvidencia = Uri.fromFile(archivo).toString()
+                mostrarCamara = false
+            },
+            onCancelar = { mostrarCamara = false }
+        )
+        return
     }
 
     Scaffold(
@@ -302,34 +317,38 @@ fun RegistroMermaScreen(
                     }
                 }
 
-                // Placeholder / Selector de Evidencia Fotográfica
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .clickable {
-                            rutaEvidencia = "evidencia_${System.currentTimeMillis()}.jpg"
-                        }
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                // Evidencia fotográfica: miniatura si ya hay foto, si no el botón para abrir la cámara
+                if (rutaEvidencia.isNotEmpty()) {
+                    MiniaturaEvidencia(
+                        urlImagen = rutaEvidencia,
+                        onEliminarClick = { rutaEvidencia = "" }
+                    )
+                } else {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(110.dp)
+                            .clickable { mostrarCamara = true }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.AddAPhoto,
-                            contentDescription = "Evidencia",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = if (rutaEvidencia.isEmpty()) "Tocar para adjuntar evidencia fotográfica"
-                            else "Evidencia adjunta: $rutaEvidencia",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AddAPhoto,
+                                contentDescription = "Evidencia",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Tocar para tomar la foto de evidencia",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 

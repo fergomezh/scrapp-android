@@ -7,15 +7,19 @@ import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
+import com.ctrlcafe.scrapp.repositorio.EstadoSubida
+import com.ctrlcafe.scrapp.repositorio.EvidenciaRepositorio
 import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 import com.ctrlcafe.scrapp.servicio.ResultadoRecalculo
 import com.ctrlcafe.scrapp.util.CantidadInvalidaException
 import com.ctrlcafe.scrapp.util.Logger
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 
@@ -30,7 +34,8 @@ class MermaViewModel(
     private val productoRepo: Repositorio<Producto> = ContenedorDatos.productoRepositorio,
     private val loteRepo: Repositorio<Lote> = ContenedorDatos.loteRepositorio,
     private val mermaRepo: Repositorio<Merma> = ContenedorDatos.mermaRepositorio,
-    private val orquestador: OrquestadorMerma = ContenedorDatos.orquestadorMerma
+    private val orquestador: OrquestadorMerma = ContenedorDatos.orquestadorMerma,
+    private val evidenciaRepo: EvidenciaRepositorio = ContenedorDatos.evidenciaRepositorio
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow<MermaEstadoUi>(MermaEstadoUi.Formulario)
@@ -42,8 +47,38 @@ class MermaViewModel(
     private val _lotesDisponibles = MutableStateFlow<List<Lote>>(emptyList())
     val lotesDisponibles: StateFlow<List<Lote>> = _lotesDisponibles.asStateFlow()
 
+    // Estado de la subida de la foto de evidencia a Cloudinary
+    private val _estadoSubida = MutableStateFlow<EstadoSubida>(EstadoSubida.EnEspera)
+    val estadoSubida: StateFlow<EstadoSubida> = _estadoSubida.asStateFlow()
+
+    // Foto local tomada o elegida: se usa como vista previa y para reintentar la subida
+    private val _archivoEvidencia = MutableStateFlow<File?>(null)
+    val archivoEvidencia: StateFlow<File?> = _archivoEvidencia.asStateFlow()
+
+    private var trabajoSubida: Job? = null
+
     init {
         cargarProductos()
+    }
+
+    /** Sube a Cloudinary la foto recién capturada; la URL resultante queda en [estadoSubida]. */
+    fun subirEvidencia(archivo: File) {
+        trabajoSubida?.cancel()
+        _archivoEvidencia.value = archivo
+        trabajoSubida = viewModelScope.launch {
+            evidenciaRepo.subirImagenCloudinary(archivo).collect { _estadoSubida.value = it }
+        }
+    }
+
+    fun reintentarSubidaEvidencia() {
+        _archivoEvidencia.value?.let { subirEvidencia(it) }
+    }
+
+    fun quitarEvidencia() {
+        trabajoSubida?.cancel()
+        trabajoSubida = null
+        _archivoEvidencia.value = null
+        _estadoSubida.value = EstadoSubida.EnEspera
     }
 
     fun cargarProductos() {
@@ -108,5 +143,6 @@ class MermaViewModel(
 
     fun reiniciarFormulario() {
         _estadoUi.value = MermaEstadoUi.Formulario
+        quitarEvidencia()
     }
 }

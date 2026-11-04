@@ -9,8 +9,12 @@ import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 
 object ContenedorDatos {
 
+    // Parámetros de los motores: se crean primero porque ConfiguracionRepositorio los
+    // actualiza en tiempo real desde configuracion/motores
+    val configuracion = ConfiguracionMotores()
+
     // 1. Instanciamos los nuevos repositorios de Firestore
-    val configuracionRepositorio = ConfiguracionRepositorio()
+    val configuracionRepositorio = ConfiguracionRepositorio(configuracion)
     val productoRepositorio = FirestoreProductoRepositorio()
     val loteRepositorio = FirestoreLoteRepositorio()
     val ventaRepositorio = FirestoreVentaRepositorio()
@@ -20,7 +24,6 @@ object ContenedorDatos {
     val usuarioRepositorio = UsuarioRepositorio()
 
     // 2. Motores de cálculo (No se tocan, usan la interfaz Repositorio<T>)
-    val configuracion = ConfiguracionMotores()
     val semaforo = MotorSemaforo(loteRepositorio, productoRepositorio, configuracion)
     val financiero = MotorFinanciero(mermaRepositorio, loteRepositorio, productoRepositorio)
     val proyeccion = MotorProyeccion(
@@ -31,6 +34,9 @@ object ContenedorDatos {
     )
 
     val authRepositorio: AuthRepositorio by lazy { AuthRepositorio() }
+
+    // Subida de fotos de evidencia a Cloudinary
+    val evidenciaRepositorio = EvidenciaRepositorio()
 
     init {
         // 3. Sembrar datos automáticamente si la base en la nube está vacía. Se espera a que
@@ -43,6 +49,10 @@ object ContenedorDatos {
                     ventaRepositorio,
                     mermaRepositorio
                 )
+                // Ventas de las últimas semanas para la recomendación de producción. Cubre la
+                // sesión guardada (no pasa por el login); en el primer login con Google el perfil
+                // aún no existe y las reglas lo rechazan, así que AuthRepositorio lo repite después.
+                SembradorDatos.programarVentasRecientes()
             }
         }
     }

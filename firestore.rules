@@ -61,6 +61,15 @@ service cloud.firestore {
 
     match /ventas/{id} {
       allow read: if esActivo();
+
+      // Ventas simuladas para la recomendación de producción (SembradorDatos.completarVentasRecientes):
+      // cualquier usuario activo puede CREAR solo documentos SIM-* marcados como SIMULADOR, nunca
+      // editar ni borrar ventas, ni crear ventas reales.
+      allow create: if esActivo()
+        && id.matches('SIM-.*')
+        && request.resource.data.creadoPor == 'SIMULADOR'
+        && request.resource.data.cantidad is number
+        && request.resource.data.cantidad > 0;
       allow write: if esAdmin();
     }
 

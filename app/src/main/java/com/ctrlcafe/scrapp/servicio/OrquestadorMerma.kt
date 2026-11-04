@@ -1,31 +1,72 @@
 package com.ctrlcafe.scrapp.servicio
 
+import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
+import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
+import com.ctrlcafe.scrapp.repositorio.Repositorio
+import com.ctrlcafe.scrapp.util.CantidadInvalidaException
 import com.ctrlcafe.scrapp.util.Logger
 import java.time.LocalDateTime
 
 /**
  * Actualización dinámica al registrar una merma.
  *
- * Contrato con `MermaController.registrarMerma`: el controlador
- * valida, congela el costo, **descuenta el stock del lote** y guarda la merma.
- * Después se llama a [aplicarMerma], que NO vuelve a descontar: reevalúa el
- * semáforo y recalcula pérdida del día, tasa de merma y proyección.
+ * Flujo del Avance 2: el controlador valida y arma la merma con el costo ya
+ * congelado, y llama a [registrarMerma]. Ese método descuenta el lote, persiste
+ * merma + lote juntos (transacción acordada con el Integrante 1, ver
+ * [RegistroMermaAtomico]) y luego llama a [aplicarMerma].
  *
- * Los valores "antes" se reconstruyen excluyendo la merma recién guardada, así
- * el resultado muestra el efecto real del registro.
+ * [aplicarMerma] NO vuelve a descontar: reevalúa el semáforo y recalcula pérdida
+ * del día, tasa de merma y proyección. Los valores "antes" se reconstruyen
+ * excluyendo la merma recién guardada, así el resultado muestra el efecto real
+ * del registro.
  */
 class OrquestadorMerma(
-    private val loteRepositorio: LoteRepositorio,
-    private val mermaRepositorio: MermaRepositorio,
-    private val productoRepositorio: ProductoRepositorio,
+    private val loteRepositorio: Repositorio<Lote>,
+    private val mermaRepositorio: Repositorio<Merma>,
+    private val productoRepositorio: Repositorio<Producto>,
     private val semaforo: MotorSemaforo,
     private val financiero: MotorFinanciero,
     private val proyeccion: MotorProyeccion
 ) {
+
+    /**
+     * Descuenta el lote, guarda merma y lote en una sola escritura y recalcula.
+     *
+     * Si el repositorio de mermas no soporta la escritura atómica (repositorios en
+     * memoria de la Etapa 2), se hacen las dos escrituras por separado.
+     *
+     * @throws CantidadInvalidaException si el lote no existe o la cantidad no es válida.
+     */
+    fun registrarMerma(merma: Merma, ahora: LocalDateTime = LocalDateTime.now()): ResultadoRecalculo {
+        val lote = loteRepositorio.buscarPorId(merma.loteId)
+            ?: throw CantidadInvalidaException("El lote seleccionado no existe.")
+        if (merma.cantidad <= 0.0) {
+            throw CantidadInvalidaException("La cantidad debe ser mayor a 0.")
+        }
+        if (merma.cantidad > lote.cantidadDisponible) {
+            throw CantidadInvalidaException(
+                "La cantidad (${merma.cantidad}) supera las existencias del lote (${lote.cantidadDisponible})."
+            )
+        }
+
+        val nuevaCantidad = lote.cantidadDisponible - merma.cantidad
+        val guardada = if (mermaRepositorio is RegistroMermaAtomico) {
+            mermaRepositorio.registrarMermaYDescontarLote(merma, nuevaCantidad).also {
+                // La copia en memoria del lote se ajusta ya; el listener la confirma después
+                lote.cantidadDisponible = nuevaCantidad
+            }
+        } else {
+            lote.cantidadDisponible = nuevaCantidad
+            loteRepositorio.actualizar(lote.id, lote)
+            mermaRepositorio.crear(merma)
+        }
+
+        return aplicarMerma(guardada, ahora)
+    }
 
     fun aplicarMerma(merma: Merma, ahora: LocalDateTime = LocalDateTime.now()): ResultadoRecalculo {
         check(mermaRepositorio.buscarPorId(merma.id) != null) {

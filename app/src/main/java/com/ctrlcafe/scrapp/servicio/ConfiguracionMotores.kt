@@ -41,9 +41,12 @@ class ConfiguracionMotores(margenSeguridadInicial: Double = MARGEN_POR_DEFECTO) 
 
     private val umbralesPorProducto = mutableMapOf<String, UmbralesSemaforo>()
 
-    /** Umbrales del producto, o los valores por defecto si no se configuraron. */
+    /** Umbrales generales del semáforo; el administrador los edita desde Configuración de Motores. */
+    var umbralesPorDefecto: UmbralesSemaforo = UmbralesSemaforo()
+
+    /** Umbrales del producto, o los generales si no se configuraron. */
     fun umbralesDe(productoId: String): UmbralesSemaforo =
-        umbralesPorProducto[productoId] ?: UmbralesSemaforo()
+        umbralesPorProducto[productoId] ?: umbralesPorDefecto
 
     fun configurarUmbrales(productoId: String, umbrales: UmbralesSemaforo) {
         umbralesPorProducto[productoId] = umbrales

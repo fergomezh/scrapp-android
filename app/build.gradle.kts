@@ -1,7 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Credenciales de Cloudinary para la subida sin firma (unsigned upload preset).
+// Se leen de local.properties y, si no están, de gradle.properties o de variables de entorno.
+// Nunca se usa el API secret dentro de la app: solo el cloud name y un preset sin firma.
+val propiedadesLocales = Properties().apply {
+    val archivo = rootProject.file("local.properties")
+    if (archivo.exists()) archivo.inputStream().use { load(it) }
+}
+fun credencialCloudinary(clave: String): String =
+    propiedadesLocales.getProperty(clave)
+        ?: (project.findProperty(clave) as String?)
+        ?: System.getenv(clave)
+        ?: ""
 
 // Sin google-services.json el plugin rompe la compilación. Lo aplicamos solo si el
 // archivo existe para que el proyecto sincronice aunque alguien aún no lo tenga.
@@ -19,10 +34,13 @@ android {
         applicationId = "com.ctrlcafe.scrapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.3-avance1"
+        versionCode = 2
+        versionName = "0.4-avance2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${credencialCloudinary("CLOUDINARY_CLOUD_NAME")}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${credencialCloudinary("CLOUDINARY_UPLOAD_PRESET")}\"")
     }
 
     buildTypes {
@@ -40,6 +58,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -73,4 +92,24 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Google Sign-In con Credential Manager
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // 1. Motor Gráfico Vico con Ortografía Correcta (Líneas y Barras)
+    implementation("com.patrykandpatrick.vico:compose:1.15.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.15.0")
+    implementation("com.patrykandpatrick.vico:core:1.15.0")
+
+    // 2. Hardware de Cámara (CameraX)
+    val versionCameraX = "1.4.2"
+    implementation("androidx.camera:camera-core:$versionCameraX")
+    implementation("androidx.camera:camera-camera2:$versionCameraX")
+    implementation("androidx.camera:camera-lifecycle:$versionCameraX")
+    implementation("androidx.camera:camera-view:$versionCameraX")
+
+    // 3. Carga y renderizado asíncrono de Imágenes (Coil)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

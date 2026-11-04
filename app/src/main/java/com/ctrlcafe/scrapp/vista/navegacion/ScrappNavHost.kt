@@ -1,5 +1,4 @@
 package com.ctrlcafe.scrapp.vista.navegacion
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,13 +19,26 @@ import androidx.navigation.navArgument
 import com.ctrlcafe.scrapp.controlador.AuthViewModel
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.vista.auth.LoginScreen
+import com.ctrlcafe.scrapp.vista.auth.RecuperarContrasenaScreen
+import com.ctrlcafe.scrapp.vista.administracion.CatalogoProductosScreen
+import com.ctrlcafe.scrapp.vista.administracion.GestionUsuariosScreen
+import com.ctrlcafe.scrapp.vista.historial.HistorialScreen
 import com.ctrlcafe.scrapp.vista.auth.RegistroScreen
+import com.ctrlcafe.scrapp.vista.gerencia.ConfiguracionMotoresScreen
 import com.ctrlcafe.scrapp.vista.gerencia.PanelGerenciaScreen
 import com.ctrlcafe.scrapp.vista.lotes.IngresoLoteScreen
 import com.ctrlcafe.scrapp.vista.lotes.MonitorLotesScreen
 import com.ctrlcafe.scrapp.vista.mermas.RegistroMermaScreen
 import com.ctrlcafe.scrapp.vista.produccion.DashboardScreen
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.ctrlcafe.scrapp.R
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+
+
 
 @Composable
 fun ScrappNavHost(
@@ -49,13 +61,12 @@ fun ScrappNavHost(
         startDestination = Rutas.Splash.route,
         modifier = modifier
     ) {
-        // --- PANTALLA SPLASH EN COMPOSE (PENDIENTE LOGO EQUIPO) ---
+        // --- PANTALLA SPLASH ya PUSE EL LOGO ATT WILLIAM
         composable(Rutas.Splash.route) {
             LaunchedEffect(key1 = true) {
                 delay(1500) // Se muestra por 1.5 segundos en pantalla
-                // CORREGIDO: Salta al Login por defecto para no forzar la UI administrativa
                 navController.navigate(Rutas.Login.route) {
-                    popUpTo(Rutas.Splash.route) { inclusive = true } // Remueve el Splash del historial
+                    popUpTo(Rutas.Splash.route) { inclusive = true } // Lo remueve de la pila
                 }
             }
             Box(
@@ -64,18 +75,18 @@ fun ScrappNavHost(
                     .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Scrapp",
-                    fontSize = 42.sp,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                // REEMPLAZADO: Muestra el logo físico del equipo centrado y estético
+                Image(
+                    painter = painterResource(id = R.drawable.scrapp), // <-- Apunta a tu archivo en drawable
+                    contentDescription = "Logo Oficial de Scrapp",
+                    modifier = Modifier
+                        .size(180.dp), // Ajusta el tamaño (ancho y alto) a tu gusto
+                    contentScale = ContentScale.Fit
                 )
             }
         }
 
-        // --- DESTINOS DEFINITIVOS DE LA APLICACIÓN ---
-        // Si Firebase ya tiene una sesión guardada, LoginScreen salta directo a Producción
+        // --- DESTINOS DE AUTENTICACIÓN ---
         composable(Rutas.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
@@ -83,6 +94,10 @@ fun ScrappNavHost(
                 onIrARegistro = {
                     authViewModel.limpiarError()
                     navController.navigate(Rutas.Registro.route)
+                },
+                onIrARecuperarContrasena = {
+                    authViewModel.limpiarError()
+                    navController.navigate(Rutas.RecuperarContrasena.route)
                 }
             )
         }
@@ -98,6 +113,17 @@ fun ScrappNavHost(
             )
         }
 
+        composable(Rutas.RecuperarContrasena.route) {
+            RecuperarContrasenaScreen(
+                viewModel = authViewModel,
+                onVolver = {
+                    authViewModel.limpiarError()
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // --- MÓDULOS DEL SISTEMA ---
         composable(RutasBottom.Produccion.route) {
             DashboardScreen(
                 onIrAMonitorLotes = { navegarAPestana(navController, RutasBottom.Lotes.route) },
@@ -115,13 +141,22 @@ fun ScrappNavHost(
         }
 
         composable(Rutas.IngresoLote.route) {
-            IngresoLoteScreen(onVolver = { navController.popBackStack() })
+            IngresoLoteScreen(
+                usuarioId = usuarioActual?.uid.orEmpty(),
+                onVolver = { navController.popBackStack() }
+            )
+        }
+
+        // Historial de mermas y de lotes: los dos roles (el operativo solo ve sus mermas)
+        composable(RutasBottom.Historial.route) {
+            HistorialScreen(usuario = usuarioActual)
         }
 
         composable(RutasBottom.Mermas.route) {
             RegistroMermaScreen(
                 viewModel = viewModel(),
-                usuarioId = usuarioActual?.uid.orEmpty()
+                usuarioId = usuarioActual?.uid.orEmpty(),
+                nombreUsuario = usuarioActual?.nombre.orEmpty()
             )
         }
 
@@ -135,6 +170,7 @@ fun ScrappNavHost(
             RegistroMermaScreen(
                 viewModel = viewModel(),
                 usuarioId = usuarioActual?.uid.orEmpty(),
+                nombreUsuario = usuarioActual?.nombre.orEmpty(),
                 productoPreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_PRODUCTO_ID),
                 lotePreseleccionadoId = entrada.arguments?.getString(Rutas.RegistroMerma.ARG_LOTE_ID),
                 onVolver = { navController.popBackStack() }
@@ -143,19 +179,48 @@ fun ScrappNavHost(
 
         // --- PANTALLA PROTEGIDA POR ROL (SOLO ADMINISTRADOR) ---
         composable(RutasBottom.Gerencia.route) {
-            // Filtro de seguridad por el rol guardado en Firestore
             val esAdmin = usuarioActual?.esAdministrador == true
 
             if (esAdmin) {
                 PanelGerenciaScreen(navController = navController, onCerrarSesion = cerrarSesion)
             } else {
-                // Redirección si un rol operativo intenta saltarse la UI.
-                // Va en LaunchedEffect: navegar durante la composición provoca recomposiciones en bucle.
                 LaunchedEffect(Unit) {
                     navController.navigate(RutasBottom.Produccion.route) {
                         popUpTo(RutasBottom.Gerencia.route) { inclusive = true }
                     }
                 }
+            }
+        }
+
+        // Se abren desde los iconos del Panel de Gerencia; también solo para administrador
+        composable(RutasBottom.GestionUsuarios.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                GestionUsuariosScreen(
+                    viewModel = viewModel(),
+                    uidAdminActual = usuarioActual?.uid.orEmpty(),
+                    onVolver = { navController.popBackStack() }
+                )
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            }
+        }
+
+        composable(RutasBottom.CatalogoProductos.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                CatalogoProductosScreen(
+                    adminUid = usuarioActual.uid,
+                    onVolver = { navController.popBackStack() }
+                )
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            }
+        }
+
+        composable(Rutas.ConfigurarMotores.route) {
+            if (usuarioActual?.esAdministrador == true) {
+                ConfiguracionMotoresScreen(navController = navController)
+            } else {
+                LaunchedEffect(Unit) { navController.popBackStack() }
             }
         }
     }

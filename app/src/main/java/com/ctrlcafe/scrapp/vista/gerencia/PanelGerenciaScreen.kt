@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,6 +26,15 @@ import com.ctrlcafe.scrapp.ui.theme.AlertaCritica
 import com.ctrlcafe.scrapp.ui.theme.TextoSecundario
 import com.ctrlcafe.scrapp.vista.componentes.BotonCerrarSesion
 import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
+import com.ctrlcafe.scrapp.vista.navegacion.Rutas
+import com.ctrlcafe.scrapp.vista.navegacion.RutasBottom
+
+// --- IMPORTACIONES CORREGIDAS CON EL NOMBRE OFICIAL DE LA LIBRERÍA VICO (WILLIAM) ---
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
 
 @Composable
 fun PanelGerenciaScreen(
@@ -49,12 +62,25 @@ fun PanelGerenciaScreen(
     val indiceMerma = viewModel.indiceMerma.value
     val productosCriticos = viewModel.productosCriticos.value
 
+    // Extracción segura de los modelos analíticos de la librería Vico Engine
+    val modeloLineas = viewModel.modeloLineasCostoMes.value
+    val modeloBarras = viewModel.modeloBarrasTopProductos.value
+
     Scaffold(
         topBar = {
             TopBarScrapp(
                 title = "Panel de Gerencia",
                 showBackButton = false,
                 actions = {
+                    IconButton(onClick = { navController.navigate(RutasBottom.GestionUsuarios.route) }) {
+                        Icon(Icons.Default.People, contentDescription = "Gestión de usuarios")
+                    }
+                    IconButton(onClick = { navController.navigate(RutasBottom.CatalogoProductos.route) }) {
+                        Icon(Icons.Default.LocalCafe, contentDescription = "Catálogo de productos")
+                    }
+                    IconButton(onClick = { navController.navigate(Rutas.ConfigurarMotores.route) }) {
+                        Icon(Icons.Default.Tune, contentDescription = "Configuración de motores")
+                    }
                     if (onCerrarSesion != null) {
                         BotonCerrarSesion(onCerrarSesion = onCerrarSesion)
                     }
@@ -77,6 +103,51 @@ fun PanelGerenciaScreen(
                 }
             }
             item { TarjetaFinanciera("Índice de Merma Global", String.format("%.1f%%", indiceMerma), Modifier.fillMaxWidth()) }
+
+            // --- GRÁFICA DE LÍNEAS EN TIEMPO REAL CON VICO ENGINE ---
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Historial de Costo de Mermas ($)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Chart(
+                            chart = lineChart(),
+                            model = modeloLineas,
+                            startAxis = rememberStartAxis(),
+                            bottomAxis = rememberBottomAxis(),
+                            modifier = Modifier.height(160.dp)
+                        )
+                    }
+                }
+            }
+
+            // --- GRÁFICA DE BARRAS EN TIEMPO REAL CON VICO ENGINE ---
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Distribución del Desperdicio Crítico (%)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Chart(
+                            chart = columnChart(),
+                            model = modeloBarras,
+                            startAxis = rememberStartAxis(),
+                            bottomAxis = rememberBottomAxis(),
+                            modifier = Modifier.height(160.dp)
+                        )
+                    }
+                }
+            }
+
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "Top 5 Productos Críticos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -122,7 +193,12 @@ fun BarraProgresoProducto(nombre: String, porcentaje: Float, textoPorcentaje: St
         }
         Spacer(modifier = Modifier.height(6.dp))
         Box(modifier = Modifier.fillMaxWidth().height(12.dp).background(Color(0xFFE5E7EB), RoundedCornerShape(6.dp))) {
-            Box(modifier = Modifier.fillMaxWidth(porcentaje).fillMaxHeight().background(AlertaCritica, RoundedCornerShape(6.dp)))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(porcentaje)
+                    .fillMaxHeight()
+                    .background(AlertaCritica, RoundedCornerShape(6.dp))
+            )
         }
     }
 }

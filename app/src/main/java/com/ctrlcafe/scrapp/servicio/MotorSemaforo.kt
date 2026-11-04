@@ -2,8 +2,10 @@ package com.ctrlcafe.scrapp.servicio
 
 import com.ctrlcafe.scrapp.modelo.EstadoCaducidad
 import com.ctrlcafe.scrapp.modelo.Lote
+import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
+import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.util.LoteVencidoException
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
@@ -25,8 +27,8 @@ import java.time.LocalDateTime
  * (`fechaCaducidad.isBefore(hoy)` => vencido).
  */
 class MotorSemaforo(
-    private val loteRepositorio: LoteRepositorio,
-    private val productoRepositorio: ProductoRepositorio,
+    private val loteRepositorio: Repositorio<Lote>,
+    private val productoRepositorio: Repositorio<Producto>,
     private val configuracion: ConfiguracionMotores
 ) {
 
@@ -70,10 +72,13 @@ class MotorSemaforo(
         }
     }
 
-    /** Reevalúa un lote, guarda el nuevo estado en el repositorio y lo devuelve. */
+    /**
+     * Reevalúa un lote y lo devuelve. El estado solo se asigna en memoria: en Firestore
+     * no se guarda (se calcula siempre a partir de `fechaCaducidad`), así recalcular
+     * no genera escrituras ni dispara los listeners de los demás dispositivos.
+     */
     fun recalcular(lote: Lote, ahora: LocalDateTime = LocalDateTime.now()): EstadoLote {
         lote.estado = evaluar(lote, ahora)
-        loteRepositorio.actualizar(lote.id, lote)
         return aEstadoLote(lote, ahora)
     }
 

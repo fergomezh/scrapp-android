@@ -7,17 +7,19 @@ import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
-import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
-import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
-import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
+import com.ctrlcafe.scrapp.repositorio.EstadoSubida
+import com.ctrlcafe.scrapp.repositorio.EvidenciaRepositorio
+import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.servicio.OrquestadorMerma
 import com.ctrlcafe.scrapp.servicio.ResultadoRecalculo
 import com.ctrlcafe.scrapp.util.CantidadInvalidaException
 import com.ctrlcafe.scrapp.util.Logger
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
 
@@ -29,10 +31,11 @@ sealed interface MermaEstadoUi {
 }
 
 class MermaViewModel(
-    private val productoRepo: ProductoRepositorio = ContenedorDatos.productoRepositorio,
-    private val loteRepo: LoteRepositorio = ContenedorDatos.loteRepositorio,
-    private val mermaRepo: MermaRepositorio = ContenedorDatos.mermaRepositorio,
-    private val orquestador: OrquestadorMerma = ContenedorDatos.orquestadorMerma
+    private val productoRepo: Repositorio<Producto> = ContenedorDatos.productoRepositorio,
+    private val loteRepo: Repositorio<Lote> = ContenedorDatos.loteRepositorio,
+    private val mermaRepo: Repositorio<Merma> = ContenedorDatos.mermaRepositorio,
+    private val orquestador: OrquestadorMerma = ContenedorDatos.orquestadorMerma,
+    private val evidenciaRepo: EvidenciaRepositorio = ContenedorDatos.evidenciaRepositorio
 ) : ViewModel() {
 
     private val _estadoUi = MutableStateFlow<MermaEstadoUi>(MermaEstadoUi.Formulario)
@@ -44,8 +47,38 @@ class MermaViewModel(
     private val _lotesDisponibles = MutableStateFlow<List<Lote>>(emptyList())
     val lotesDisponibles: StateFlow<List<Lote>> = _lotesDisponibles.asStateFlow()
 
+    // Estado de la subida de la foto de evidencia a Cloudinary
+    private val _estadoSubida = MutableStateFlow<EstadoSubida>(EstadoSubida.EnEspera)
+    val estadoSubida: StateFlow<EstadoSubida> = _estadoSubida.asStateFlow()
+
+    // Foto local tomada o elegida: se usa como vista previa y para reintentar la subida
+    private val _archivoEvidencia = MutableStateFlow<File?>(null)
+    val archivoEvidencia: StateFlow<File?> = _archivoEvidencia.asStateFlow()
+
+    private var trabajoSubida: Job? = null
+
     init {
         cargarProductos()
+    }
+
+    /** Sube a Cloudinary la foto recién capturada; la URL resultante queda en [estadoSubida]. */
+    fun subirEvidencia(archivo: File) {
+        trabajoSubida?.cancel()
+        _archivoEvidencia.value = archivo
+        trabajoSubida = viewModelScope.launch {
+            evidenciaRepo.subirImagenCloudinary(archivo).collect { _estadoSubida.value = it }
+        }
+    }
+
+    fun reintentarSubidaEvidencia() {
+        _archivoEvidencia.value?.let { subirEvidencia(it) }
+    }
+
+    fun quitarEvidencia() {
+        trabajoSubida?.cancel()
+        trabajoSubida = null
+        _archivoEvidencia.value = null
+        _estadoSubida.value = EstadoSubida.EnEspera
     }
 
     fun cargarProductos() {
@@ -53,8 +86,9 @@ class MermaViewModel(
     }
 
     fun seleccionarProducto(productoId: String) {
-        _lotesDisponibles.value = loteRepo.listarPorProducto(productoId)
-            .filter { it.cantidadDisponible > 0.0 }
+        // CORREÇÃO: Utilizando listar() padrão e a função filter do Kotlin para buscar por produto
+        _lotesDisponibles.value = loteRepo.listar()
+            .filter { it.productoId == productoId && it.cantidadDisponible > 0.0 }
     }
 
     fun registrarMerma(
@@ -63,7 +97,9 @@ class MermaViewModel(
         causa: CausaMerma,
         fecha: LocalDate,
         rutaEvidencia: String,
-        usuarioId: String
+        usuarioId: String,
+        // Va desnormalizado en la merma para que el historial no consulte `usuarios` por fila
+        nombreUsuario: String = ""
     ) {
         viewModelScope.launch {
             _estadoUi.value = MermaEstadoUi.Guardando
@@ -78,27 +114,23 @@ class MermaViewModel(
                     throw CantidadInvalidaException("La cantidad ($cantidad) supera las existencias del lote (${lote.cantidadDisponible}).")
                 }
 
-                // 1. Congelar costo y descontar existencias en el lote
-                val costoCongelado = lote.costoUnitario
-                lote.cantidadDisponible -= cantidad
-                loteRepo.actualizar(lote.id, lote)
-
-                // 2. Persistir entidad Merma
+                // 1. Congelar el costo del lote en la merma
                 val nuevaMerma = Merma(
                     id = "MER-${UUID.randomUUID().toString().take(6).uppercase()}",
                     loteId = lote.id,
                     productoId = lote.productoId,
                     cantidad = cantidad,
-                    costoUnitarioCongelado = costoCongelado,
+                    costoUnitarioCongelado = lote.costoUnitario,
                     fecha = fecha,
                     causa = causa,
                     rutaEvidencia = rutaEvidencia.ifBlank { "sin_evidencia.jpg" },
-                    usuarioId = usuarioId
+                    usuarioId = usuarioId,
+                    nombreUsuario = nombreUsuario
                 )
-                mermaRepo.crear(nuevaMerma)
 
-                // 3. Orquestador: recálculo dinámico de semáforo, pérdidas y proyecciones
-                val resultadoRecalculo = orquestador.aplicarMerma(nuevaMerma)
+                // 2. Orquestador: descuenta el lote, guarda merma + lote en un WriteBatch
+                //    y recalcula semáforo, pérdidas y proyecciones
+                val resultadoRecalculo = orquestador.registrarMerma(nuevaMerma)
                 Logger.info(MermaViewModel::class.java, "Merma registrada con éxito: ${nuevaMerma.id}")
 
                 _estadoUi.value = MermaEstadoUi.Exito(resultadoRecalculo)
@@ -111,5 +143,6 @@ class MermaViewModel(
 
     fun reiniciarFormulario() {
         _estadoUi.value = MermaEstadoUi.Formulario
+        quitarEvidencia()
     }
 }

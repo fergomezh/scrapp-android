@@ -1,6 +1,8 @@
 package com.ctrlcafe.scrapp.vista.navegacion
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -12,6 +14,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ctrlcafe.scrapp.controlador.AuthEstadoUi
 import com.ctrlcafe.scrapp.controlador.AuthViewModel
+import com.ctrlcafe.scrapp.vista.componentes.IndicadorSinConexion
+import com.ctrlcafe.scrapp.vista.componentes.rememberHayConexion
 
 // Pantallas donde no se muestra la barra inferior
 private val rutasSinBarra = setOf(Rutas.Splash.route, Rutas.Login.route, Rutas.Registro.route)
@@ -28,13 +32,23 @@ fun ScrappNavContainer(
     val estadoAuth by authViewModel.estado.collectAsState()
     val usuarioActual = (estadoAuth as? AuthEstadoUi.Autenticado)?.perfil
 
+    val hayConexion = rememberHayConexion()
+
     Scaffold(
         bottomBar = {
-            if (currentRoute != null && currentRoute !in rutasSinBarra) {
-                BarraInferior(
-                    navController = navController,
-                    esAdministrador = usuarioActual?.esAdministrador == true
+            val conBarra = currentRoute != null && currentRoute !in rutasSinBarra
+            Column {
+                // Aviso global de modo sin conexión, encima de la barra inferior
+                IndicadorSinConexion(
+                    visible = !hayConexion,
+                    modifier = if (conBarra) Modifier else Modifier.navigationBarsPadding()
                 )
+                if (conBarra) {
+                    BarraInferior(
+                        navController = navController,
+                        esAdministrador = usuarioActual?.esAdministrador == true
+                    )
+                }
             }
         }
     ) { innerPadding ->

@@ -11,5 +11,8 @@ data class Lote(
     val fechaIngreso: LocalDate,
     val vidaUtilDias: Int,
     val fechaCaducidad: LocalDate = fechaIngreso.plusDays(vidaUtilDias.toLong()),
-    var estado: EstadoCaducidad = EstadoCaducidad.Vigente
+    var estado: EstadoCaducidad = EstadoCaducidad.Vigente,
+    // Nuevos campos requeridos por Firestore
+    val creadoPor: String = "",
+    val creadoEn: LocalDate? = null
 )

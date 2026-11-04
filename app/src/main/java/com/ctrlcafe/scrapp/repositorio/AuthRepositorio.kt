@@ -5,6 +5,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.modelo.Rol
+import com.ctrlcafe.scrapp.repositorio.firestore.SembradorDatos
 import com.ctrlcafe.scrapp.util.ContrasenaDebilException
 import com.ctrlcafe.scrapp.util.CorreoEnUsoException
 import com.ctrlcafe.scrapp.util.CredencialesInvalidasException
@@ -60,6 +61,8 @@ class AuthRepositorio(
             throw UsuarioDesactivadoException()
         }
         Logger.info(AuthRepositorio::class.java, "Sesión iniciada con correo: $uid (${perfil.rol})")
+        // Ventas recientes para la recomendación de producción (no-op si ya se hizo hoy)
+        SembradorDatos.programarVentasRecientes()
         perfil
     }
 
@@ -132,6 +135,9 @@ class AuthRepositorio(
                 throw UsuarioDesactivadoException()
             }
         }
+        // Datos de prueba: mermas propias para que el historial no aparezca vacío
+        SembradorDatos.sembrarMermasDemoSiNoTiene(perfil)
+        SembradorDatos.programarVentasRecientes()
         perfil
     }
 

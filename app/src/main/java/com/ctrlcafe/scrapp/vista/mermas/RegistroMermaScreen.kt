@@ -30,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -57,6 +58,7 @@ import com.ctrlcafe.scrapp.controlador.MermaViewModel
 import com.ctrlcafe.scrapp.modelo.CausaMerma
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Producto
+import com.ctrlcafe.scrapp.repositorio.EstadoSubida
 import com.ctrlcafe.scrapp.util.Validador
 import com.ctrlcafe.scrapp.vista.componentes.MiniaturaEvidencia
 import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
@@ -91,7 +93,8 @@ fun RegistroMermaScreen(
     var cantidadTexto by remember { mutableStateOf("") }
     var errorCantidad by remember { mutableStateOf<String?>(null) }
 
-    var rutaEvidencia by remember { mutableStateOf("") }
+    val estadoSubida by viewModel.estadoSubida.collectAsState()
+    val archivoEvidencia by viewModel.archivoEvidencia.collectAsState()
     var mostrarCamara by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -124,11 +127,17 @@ fun RegistroMermaScreen(
         }
     }
 
-    // La cámara ocupa toda la pantalla; la foto se guarda en el dispositivo y su ruta queda como evidencia
+    LaunchedEffect(estadoSubida) {
+        if (estadoSubida is EstadoSubida.Error) {
+            snackbarHostState.showSnackbar((estadoSubida as EstadoSubida.Error).mensaje)
+        }
+    }
+
+    // La cámara ocupa toda la pantalla; la foto se sube a Cloudinary y su URL queda como evidencia
     if (mostrarCamara) {
         CamaraEvidenciaScreen(
             onImagenConfirmada = { archivo ->
-                rutaEvidencia = Uri.fromFile(archivo).toString()
+                viewModel.subirEvidencia(archivo)
                 mostrarCamara = false
             },
             onCancelar = { mostrarCamara = false }
@@ -319,11 +328,24 @@ fun RegistroMermaScreen(
                 }
 
                 // Evidencia fotográfica: miniatura si ya hay foto, si no el botón para abrir la cámara
-                if (rutaEvidencia.isNotEmpty()) {
-                    MiniaturaEvidencia(
-                        urlImagen = rutaEvidencia,
-                        onEliminarClick = { rutaEvidencia = "" }
-                    )
+                val archivoLocal = archivoEvidencia
+                if (archivoLocal != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Mientras sube se muestra la foto local; al terminar, la de Cloudinary
+                        MiniaturaEvidencia(
+                            urlImagen = (estadoSubida as? EstadoSubida.Exitoso)?.url
+                                ?: Uri.fromFile(archivoLocal).toString(),
+                            onEliminarClick = { viewModel.quitarEvidencia() }
+                        )
+                        EstadoSubidaEvidencia(
+                            estado = estadoSubida,
+                            onReintentar = { viewModel.reintentarSubidaEvidencia() },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 } else {
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -356,6 +378,8 @@ fun RegistroMermaScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val cargando = estadoUi is MermaEstadoUi.Guardando
+                // Con foto pendiente de subir (o fallida) no se registra: la merma quedaría sin URL
+                val evidenciaPendiente = archivoEvidencia != null && estadoSubida !is EstadoSubida.Exitoso
 
                 Button(
                     onClick = {
@@ -382,13 +406,13 @@ fun RegistroMermaScreen(
                                 cantidad = cantNum,
                                 causa = causaSeleccionada,
                                 fecha = LocalDate.now(),
-                                rutaEvidencia = rutaEvidencia,
+                                rutaEvidencia = (estadoSubida as? EstadoSubida.Exitoso)?.url.orEmpty(),
                                 usuarioId = usuarioId,
                                 nombreUsuario = nombreUsuario
                             )
                         }
                     },
-                    enabled = !cargando && loteSeleccionado != null,
+                    enabled = !cargando && !evidenciaPendiente && loteSeleccionado != null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -403,6 +427,55 @@ fun RegistroMermaScreen(
                         Text("Registrar Merma")
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Texto y barra de progreso de la subida de la evidencia a Cloudinary. */
+@Composable
+private fun EstadoSubidaEvidencia(
+    estado: EstadoSubida,
+    onReintentar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        when (estado) {
+            is EstadoSubida.EnEspera, is EstadoSubida.Procesando -> {
+                val progreso = (estado as? EstadoSubida.Procesando)?.progreso ?: 0f
+                Text(
+                    text = "Subiendo evidencia… ${(progreso * 100).toInt()} %",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LinearProgressIndicator(
+                    progress = { progreso },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            is EstadoSubida.Exitoso -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text(
+                        text = "Evidencia subida",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            is EstadoSubida.Error -> {
+                Text(
+                    text = estado.mensaje,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = onReintentar) { Text("Reintentar") }
             }
         }
     }

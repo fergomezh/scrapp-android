@@ -148,13 +148,17 @@ internal object ProveedorDependenciasModuloPrincipal {
     val lotesFlow: Flow<List<Lote>> = ContenedorDatos.loteRepositorio.lotesFlow
 
     /** Cambios que afectan al monitor de lotes: lotes (existencias, nuevos) y nombres de producto. */
-    val cambiosLotes: Flow<Unit> = combine(lotesFlow, productosFlow) { _, _ -> }
+    // configuracion/motores: si el admin cambia margen o umbrales, todo se recalcula en vivo
+    private val configuracionFlow: Flow<Map<String, Any>> = ContenedorDatos.configuracionRepositorio.configFlow
+
+    val cambiosLotes: Flow<Unit> = combine(lotesFlow, productosFlow, configuracionFlow) { _, _, _ -> }
 
     /** Cambios que afectan a la proyección de producción. */
     val cambiosProduccion: Flow<Unit> = combine(
         ContenedorDatos.ventaRepositorio.ventasFlow,
         ContenedorDatos.mermaRepositorio.mermasFlow,
         lotesFlow,
-        productosFlow
-    ) { _, _, _, _ -> }
+        productosFlow,
+        configuracionFlow
+    ) { _, _, _, _, _ -> }
 }

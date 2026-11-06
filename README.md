@@ -8,9 +8,11 @@ Aplicación Android desarrollada con **Jetpack Compose** y **Firebase** para el 
 
 ## Entregables
 
+Entrega final de la Etapa 3, Avance 2. El video muestra la defensa de esta fase: el funcionamiento de la app con Firebase y la explicación de la implementación.
+
 | Entregable | Enlace |
 |---|---|
-| Video de demostración (Avance 2) | _Pendiente: agregar enlace_ |
+| Video de defensa (Avance 2) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAVO57cR7w0SL5qbK7zvT3ZAXCmdZaLviyN1HozuEAVzzE?e=F1mvdr) |
 | Documento de investigación sobre Firebase (APA 7) | [docs/Etapa 3 Avance 2 - Investigacion Firebase - CTRL Cafe.pdf](docs/Etapa%203%20Avance%202%20-%20Investigacion%20Firebase%20-%20CTRL%20Cafe.pdf) |
 | Video de demostración (Avance 1) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAFBJLpUXw9TYQKUIsiwnp9ASbncvHH1yIk-juFE1IHpDw?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=S7AGCz) |
 | Documento de investigación sobre Jetpack Compose (Avance 1) | [docs/Etapa 3 Avance 1 - Investigacion Jetpack Compose - CTRL Cafe.pdf](docs/Etapa%203%20Avance%201%20-%20Investigacion%20Jetpack%20Compose%20-%20CTRL%20Cafe.pdf) |

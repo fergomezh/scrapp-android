@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -51,7 +52,14 @@ class UsuariosViewModel(
             trySend(lista)
         }
         awaitClose { listener.remove() }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
+        // Al cerrar sesión (o si otro admin le quita el rol) Firestore responde PERMISSION_DENIED.
+        // Sin este catch la excepción llega a viewModelScope y cierra la app.
+        .catch { e ->
+            Logger.error(UsuariosViewModel::class.java, "Listener de usuarios cerrado: ${e.message}", e)
+            emit(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun cambiarRol(usuario: PerfilUsuario, nuevoRol: Rol) {
         viewModelScope.launch {

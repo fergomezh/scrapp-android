@@ -142,6 +142,51 @@ class AuthRepositorio(
     }
 
     /**
+     * Autenticación con GitHub vía OAuthProvider. Si no existe en Firestore,
+     * crea el perfil con rol OPERATIVO y proveedor "github".
+     */
+    suspend fun autenticarConGitHub(activity: android.app.Activity): Result<PerfilUsuario> = ejecutar("autenticarConGitHub") {
+        val provider = com.google.firebase.auth.OAuthProvider.newBuilder("github.com")
+
+        val task = auth.startActivityForSignInWithProvider(activity, provider.build())
+        val resultado = task.await()
+        val usuario = resultado.user ?: throw ErrorAutenticacionException("Fallo al autenticar con GitHub")
+
+        val docRef = usuarios.document(usuario.uid)
+        val doc = docRef.get().await()
+
+        val perfil: PerfilUsuario
+        if (!doc.exists()) {
+            perfil = PerfilUsuario(
+                uid = usuario.uid,
+                nombre = usuario.displayName ?: usuario.email?.substringBefore("@") ?: "Usuario GitHub",
+                correo = usuario.email ?: "",
+                rol = Rol.OPERATIVO,
+                activo = true
+            )
+            val mapa = mapOf(
+                CAMPO_NOMBRE to perfil.nombre,
+                CAMPO_CORREO to perfil.correo,
+                CAMPO_ROL to perfil.rol.name,
+                CAMPO_ACTIVO to perfil.activo,
+                CAMPO_PROVEEDOR to "github",
+                CAMPO_CREADO_EN to FieldValue.serverTimestamp()
+            )
+            docRef.set(mapa).await()
+            Logger.info(AuthRepositorio::class.java, "Perfil nuevo creado desde GitHub: ${usuario.uid}")
+        } else {
+            perfil = desdeDocumento(doc)
+            if (!perfil.activo) {
+                auth.signOut()
+                throw UsuarioDesactivadoException()
+            }
+        }
+        SembradorDatos.sembrarMermasDemoSiNoTiene(perfil)
+        SembradorDatos.programarVentasRecientes()
+        perfil
+    }
+
+    /**
      * Envía correo de recuperación de contraseña de Firebase.
      */
     suspend fun recuperarContrasena(correo: String): Result<Unit> = ejecutar("recuperarContrasena") {
@@ -225,7 +270,8 @@ class AuthRepositorio(
         is FirebaseAuthInvalidUserException ->
             if (e.errorCode == "ERROR_USER_DISABLED") UsuarioDesactivadoException()
             else CredencialesInvalidasException()
-        is FirebaseAuthUserCollisionException -> CorreoEnUsoException()
+        is FirebaseAuthUserCollisionException ->
+            CorreoEnUsoException("Este correo ya está registrado con Google u otro proveedor. Inicia sesión con ese método.")
         is FirebaseFirestoreException ->
             if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) SinConexionException()
             else ErrorAutenticacionException(e.message)

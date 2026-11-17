@@ -139,6 +139,25 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Inicia sesión o registra al usuario mediante autenticación social con GitHub.
+     */
+    fun iniciarSesionConGitHub(activity: android.app.Activity) {
+        viewModelScope.launch {
+            _estado.value = AuthEstadoUi.Cargando
+            val resultado = authRepositorio.autenticarConGitHub(activity)
+            resultado.fold(
+                onSuccess = { perfil ->
+                    _estado.value = AuthEstadoUi.Autenticado(perfil)
+                    iniciarMonitoreoCuentaActiva()
+                },
+                onFailure = { error ->
+                    _estado.value = AuthEstadoUi.Error(error.message ?: "Fallo al iniciar sesión con GitHub.")
+                }
+            )
+        }
+    }
+
     fun recuperarContrasena(correo: String) {
         viewModelScope.launch {
             _estado.value = AuthEstadoUi.Cargando

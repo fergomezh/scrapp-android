@@ -34,8 +34,8 @@ android {
         applicationId = "com.ctrlcafe.scrapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.4-avance2"
+        versionCode = 3
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -59,6 +59,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -112,4 +116,6 @@ dependencies {
 
     // 3. Carga y renderizado asíncrono de Imágenes (Coil)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    testImplementation("junit:junit:4.13.2")
 }

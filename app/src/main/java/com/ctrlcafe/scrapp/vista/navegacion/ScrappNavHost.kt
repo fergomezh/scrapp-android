@@ -3,13 +3,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -75,12 +72,12 @@ fun ScrappNavHost(
                     .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
-                // REEMPLAZADO: Muestra el logo físico del equipo centrado y estético
+
                 Image(
-                    painter = painterResource(id = R.drawable.scrapp), // <-- Apunta a tu archivo en drawable
-                    contentDescription = "Logo Oficial de Scrapp",
+                    painter = painterResource(id = R.drawable.scrapp),
+                  contentDescription = "Logo Oficial de Scrapp",
                     modifier = Modifier
-                        .size(180.dp), // Ajusta el tamaño (ancho y alto) a tu gusto
+                        .size(250.dp),
                     contentScale = ContentScale.Fit
                 )
             }
@@ -154,7 +151,9 @@ fun ScrappNavHost(
 
         composable(RutasBottom.Mermas.route) {
             RegistroMermaScreen(
-                viewModel = viewModel(),
+                // Clave por usuario: la pestaña se restaura tras cerrar sesión y, sin clave,
+                // el siguiente usuario vería el formulario y la foto que dejó el anterior.
+                viewModel = viewModel(key = "registro-merma-${usuarioActual?.uid}"),
                 usuarioId = usuarioActual?.uid.orEmpty(),
                 nombreUsuario = usuarioActual?.nombre.orEmpty()
             )

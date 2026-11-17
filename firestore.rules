@@ -47,14 +47,25 @@ service cloud.firestore {
     match /lotes/{id} {
       allow read: if esActivo();
 
-      // Operativo crea si creadoPor es su UID.
-      allow create: if esAdmin() || (esActivo() && request.resource.data.creadoPor == request.auth.uid);
+      // Operativo crea si creadoPor es su UID y las cantidades son coherentes
+      // (no se puede crear un lote con existencia negativa o mayor a la inicial).
+      allow create: if esAdmin() || (
+        esActivo()
+        && request.resource.data.creadoPor == request.auth.uid
+        && request.resource.data.cantidadInicial is number
+        && request.resource.data.cantidadInicial > 0
+        && request.resource.data.cantidadDisponible is number
+        && request.resource.data.cantidadDisponible >= 0
+        && request.resource.data.cantidadDisponible <= request.resource.data.cantidadInicial
+      );
 
-      // Operativo actualiza SOLO cantidadDisponible y SOLO para descontar.
+      // Operativo actualiza SOLO cantidadDisponible, SOLO para descontar y sin quedar en negativo.
       allow update: if esAdmin() || (
         esActivo()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cantidadDisponible'])
+        && request.resource.data.cantidadDisponible is number
         && request.resource.data.cantidadDisponible < resource.data.cantidadDisponible
+        && request.resource.data.cantidadDisponible >= 0
       );
       allow delete: if esAdmin();
     }
@@ -77,7 +88,14 @@ service cloud.firestore {
       // El operativo lee solo sus propias mermas; el admin lee todas.
       allow read: if esAdmin() || (esActivo() && resource.data.usuarioId == request.auth.uid);
 
-      allow create: if esActivo() && request.resource.data.usuarioId == request.auth.uid;
+      // Solo a su nombre (el admin también a nombre de otro, p. ej. datos de demostración),
+      // con cantidad positiva y costo no negativo.
+      allow create: if esActivo()
+        && (request.resource.data.usuarioId == request.auth.uid || esAdmin())
+        && request.resource.data.cantidad is number
+        && request.resource.data.cantidad > 0
+        && request.resource.data.costoUnitarioCongelado is number
+        && request.resource.data.costoUnitarioCongelado >= 0;
       allow update, delete: if esAdmin();
     }
 

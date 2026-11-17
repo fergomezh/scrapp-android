@@ -15,7 +15,11 @@ import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.servicio.MotorSemaforo
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
+import com.ctrlcafe.scrapp.repositorio.firestore.EscuchaFirestore
+import com.ctrlcafe.scrapp.repositorio.firestore.iniciar
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -210,7 +214,9 @@ class HistorialViewModel(
                 unidadMedida = producto?.unidadMedida.orEmpty(),
                 motivo = if (agotado) MotivoCierreLote.AGOTADO else MotivoCierreLote.VENCIDO,
                 fechaCierre = if (agotado) {
-                    delLote.maxOfOrNull { it.fecha } ?: lote.fechaCaducidad
+                    // Sin mermas visibles (el operativo no ve las ajenas) se usa la caducidad,
+                    // pero nunca una fecha futura: un lote agotado ya salió del monitor.
+                    delLote.maxOfOrNull { it.fecha } ?: minOf(lote.fechaCaducidad, LocalDate.now())
                 } else {
                     lote.fechaCaducidad
                 },
@@ -264,12 +270,12 @@ class HistorialViewModel(
                 val esAdmin = usuario?.esAdministrador == true
                 val mermas = when {
                     usuario == null -> flowOf(emptyList())
-                    esAdmin -> ContenedorDatos.mermaRepositorio.observarMermas(usuarioId = null)
-                    else -> ContenedorDatos.mermaRepositorio.observarMermas(usuarioId = usuario.uid)
+                    esAdmin -> ContenedorDatos.mermaRepositorio.observarMermas(usuarioId = null, uidSesion = usuario.uid)
+                    else -> ContenedorDatos.mermaRepositorio.observarMermas(usuarioId = usuario.uid, uidSesion = usuario.uid)
                 }
                 val nombres = when {
                     usuario == null -> flowOf(emptyMap())
-                    esAdmin -> observarNombresUsuarios()
+                    esAdmin -> observarNombresUsuarios(uidSesion = usuario.uid)
                     // El operativo solo ve sus mermas, así que basta con su propio nombre
                     else -> flowOf(mapOf(usuario.uid to usuario.nombre))
                 }
@@ -285,18 +291,23 @@ class HistorialViewModel(
         }
 
         /** uid -> nombre de todos los usuarios; solo el administrador puede leer `usuarios`. */
-        private fun observarNombresUsuarios(): Flow<Map<String, String>> = callbackFlow {
-            val listener = FirebaseFirestore.getInstance()
-                .collection(AuthRepositorio.COLECCION_USUARIOS)
-                .addSnapshotListener { snapshot, error ->
-                    // Sin nombres el historial sigue funcionando: se muestra el uid
-                    if (error != null || snapshot == null) {
-                        trySend(emptyMap())
-                        return@addSnapshotListener
-                    }
-                    trySend(snapshot.documents.associate { it.id to it.getString("nombre").orEmpty() })
-                }
-            awaitClose { listener.remove() }
+        private fun observarNombresUsuarios(uidSesion: String): Flow<Map<String, String>> = callbackFlow {
+            // Sin nombres el historial sigue funcionando: se muestra el uid
+            trySend(emptyMap())
+            val consulta = FirebaseFirestore.getInstance().collection(AuthRepositorio.COLECCION_USUARIOS)
+            val escucha = EscuchaFirestore<QuerySnapshot>("nombres de usuarios") { snapshot ->
+                trySend(snapshot.documents.associate { it.id to it.getString("nombre").orEmpty() })
+            }
+            // Igual que el historial de mermas: abierta solo mientras este usuario tiene la sesión
+            val auth = FirebaseAuth.getInstance()
+            val alCambiarSesion = FirebaseAuth.AuthStateListener { estado ->
+                if (estado.currentUser?.uid == uidSesion) escucha.iniciar(consulta) else escucha.detener()
+            }
+            auth.addAuthStateListener(alCambiarSesion)
+            awaitClose {
+                auth.removeAuthStateListener(alCambiarSesion)
+                escucha.detener()
+            }
         }
     }
 }

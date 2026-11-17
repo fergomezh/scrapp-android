@@ -1,5 +1,10 @@
 package com.ctrlcafe.scrapp.vista.auth
-
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.ctrlcafe.scrapp.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -85,16 +90,14 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "Scrapp",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Control de mermas e inventario",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            // --- LOGO HORIZONTAL SCRAPP ---
+            Image(
+                painter = painterResource(id = R.drawable.scrapp),
+                contentDescription = "Logo Scrapp",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .width(220.dp)
+                    .wrapContentHeight()
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -247,6 +250,25 @@ fun LoginScreen(
                     .height(48.dp)
             ) {
                 Text("Continuar con Google")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón de inicio de sesión con GitHub
+            OutlinedButton(
+                onClick = {
+                    viewModel.limpiarEstado()
+                    val activity = context as? android.app.Activity
+                    if (activity != null) {
+                        viewModel.iniciarSesionConGitHub(activity)
+                    }
+                },
+                enabled = !cargando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Continuar con GitHub")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -214,7 +214,9 @@ class HistorialViewModel(
                 unidadMedida = producto?.unidadMedida.orEmpty(),
                 motivo = if (agotado) MotivoCierreLote.AGOTADO else MotivoCierreLote.VENCIDO,
                 fechaCierre = if (agotado) {
-                    delLote.maxOfOrNull { it.fecha } ?: lote.fechaCaducidad
+                    // Sin mermas visibles (el operativo no ve las ajenas) se usa la caducidad,
+                    // pero nunca una fecha futura: un lote agotado ya salió del monitor.
+                    delLote.maxOfOrNull { it.fecha } ?: minOf(lote.fechaCaducidad, LocalDate.now())
                 } else {
                     lote.fechaCaducidad
                 },

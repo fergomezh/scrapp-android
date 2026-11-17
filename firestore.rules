@@ -88,9 +88,10 @@ service cloud.firestore {
       // El operativo lee solo sus propias mermas; el admin lee todas.
       allow read: if esAdmin() || (esActivo() && resource.data.usuarioId == request.auth.uid);
 
-      // Solo a su nombre, con cantidad positiva y costo no negativo.
+      // Solo a su nombre (el admin también a nombre de otro, p. ej. datos de demostración),
+      // con cantidad positiva y costo no negativo.
       allow create: if esActivo()
-        && request.resource.data.usuarioId == request.auth.uid
+        && (request.resource.data.usuarioId == request.auth.uid || esAdmin())
         && request.resource.data.cantidad is number
         && request.resource.data.cantidad > 0
         && request.resource.data.costoUnitarioCongelado is number

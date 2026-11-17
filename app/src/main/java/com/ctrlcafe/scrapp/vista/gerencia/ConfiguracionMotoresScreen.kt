@@ -7,12 +7,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import java.io.File
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.repositorio.firestore.ConfiguracionRepositorio
+import com.ctrlcafe.scrapp.repositorio.firestore.SembradorDemostracion
+import com.ctrlcafe.scrapp.vista.componentes.DialogoConfirmacion
 import com.ctrlcafe.scrapp.servicio.ConfiguracionMotores
 import com.ctrlcafe.scrapp.servicio.UmbralesSemaforo
 import com.ctrlcafe.scrapp.util.Logger
@@ -41,6 +45,10 @@ fun ConfiguracionMotoresScreen(
     var errorCritico by remember { mutableStateOf<String?>(null) }
     var errorProximo by remember { mutableStateOf<String?>(null) }
     var guardando by remember { mutableStateOf(false) }
+    var sembrando by remember { mutableStateOf(false) }
+    var confirmarSembrado by remember { mutableStateOf(false) }
+    var limpiezaPendiente by remember { mutableStateOf<SembradorDemostracion.Limpieza?>(null) }
+    val contexto = LocalContext.current
 
     val snackbarHostState = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
@@ -185,6 +193,125 @@ fun ConfiguracionMotoresScreen(
                     Text("Guardar Parámetros")
                 }
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            Text(
+                text = "Datos de demostración",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Agrega 5 semanas de historial (lotes y mermas por producto) y lotes actuales " +
+                    "con caducidad escalonada para ver el semáforo en verde, amarillo, rojo y negro. " +
+                    "No borra ni modifica datos existentes y se puede repetir sin duplicar.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = { confirmarSembrado = true },
+                enabled = !sembrando && !guardando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                if (sembrando) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Sembrar datos de demostración")
+                }
+            }
+
+            Text(
+                text = "Eliminar los lotes y mermas anteriores y dejar solo los de demostración. " +
+                    "Productos, ventas, usuarios y configuración no se tocan. Antes de borrar se " +
+                    "guarda un respaldo JSON en el teléfono.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(
+                onClick = {
+                    sembrando = true
+                    alcance.launch {
+                        try {
+                            val calculo = SembradorDemostracion.calcularLimpieza()
+                            if (calculo.vacia) {
+                                snackbarHostState.showSnackbar("No hay lotes ni mermas anteriores que eliminar.")
+                            } else {
+                                limpiezaPendiente = calculo
+                            }
+                        } catch (e: Exception) {
+                            Logger.error(SembradorDemostracion::class.java, "Error al calcular la limpieza: ${e.message}", e)
+                            snackbarHostState.showSnackbar("No se pudo revisar la base: ${e.message}")
+                        }
+                        sembrando = false
+                    }
+                },
+                enabled = !sembrando && !guardando,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Eliminar datos anteriores y resembrar")
+            }
         }
+    }
+
+    limpiezaPendiente?.let { limpieza ->
+        DialogoConfirmacion(
+            titulo = "Eliminar datos anteriores",
+            mensaje = "Se eliminarán de Firestore ${limpieza.lotes.size} lotes y ${limpieza.mermas.size} mermas " +
+                "que no son de demostración. Esta acción no se puede deshacer desde la app (se guarda un " +
+                "respaldo JSON en el teléfono). Después se volverán a sembrar los datos de demostración. ¿Continuar?",
+            onConfirm = {
+                limpiezaPendiente = null
+                sembrando = true
+                alcance.launch {
+                    val mensaje = try {
+                        val (respaldo, resumen) = SembradorDemostracion.limpiarYResembrar(
+                            limpieza,
+                            File(contexto.filesDir, "respaldos")
+                        )
+                        "Eliminados ${limpieza.lotes.size} lotes y ${limpieza.mermas.size} mermas " +
+                            "(respaldo: ${respaldo.name}). Sembrados ${resumen.total} documentos nuevos."
+                    } catch (e: Exception) {
+                        Logger.error(SembradorDemostracion::class.java, "Error en la limpieza: ${e.message}", e)
+                        "No se completó la limpieza: ${e.message}"
+                    }
+                    sembrando = false
+                    snackbarHostState.showSnackbar(mensaje)
+                }
+            },
+            onDismiss = { limpiezaPendiente = null }
+        )
+    }
+
+    if (confirmarSembrado) {
+        DialogoConfirmacion(
+            titulo = "Sembrar datos de demostración",
+            mensaje = "Se agregarán lotes y mermas de ejemplo en Firestore. Los datos actuales no se borran ni se modifican. ¿Continuar?",
+            onConfirm = {
+                confirmarSembrado = false
+                sembrando = true
+                alcance.launch {
+                    val mensaje = try {
+                        val resumen = SembradorDemostracion.sembrar()
+                        if (resumen.total == 0) {
+                            "Los datos de demostración de hoy ya estaban sembrados."
+                        } else {
+                            "Agregados: ${resumen.lotesHistoricos} lotes de historial, " +
+                                "${resumen.lotesActuales} lotes actuales y ${resumen.mermas} mermas."
+                        }
+                    } catch (e: Exception) {
+                        Logger.error(SembradorDemostracion::class.java, "Error al sembrar demostración: ${e.message}", e)
+                        "No se pudieron sembrar los datos: ${e.message}"
+                    }
+                    sembrando = false
+                    snackbarHostState.showSnackbar(mensaje)
+                }
+            },
+            onDismiss = { confirmarSembrado = false }
+        )
     }
 }

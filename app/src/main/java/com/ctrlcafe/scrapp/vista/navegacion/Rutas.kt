@@ -34,7 +34,7 @@ sealed class RutasBottom(
     val title: String,
     val icon: ImageVector
 ) {
-    // Pestañas Compartidas Existentes y Nueva Pestaña Historial
+    // Pestañas Compartidas
     object Produccion : RutasBottom("dashboard_produccion", "Producción", Icons.Default.Layers)
     object Lotes : RutasBottom("dashboard_lotes", "Lotes", Icons.AutoMirrored.Filled.Assignment)
     object Mermas : RutasBottom("dashboard_mermas", "Mermas", Icons.Default.History)

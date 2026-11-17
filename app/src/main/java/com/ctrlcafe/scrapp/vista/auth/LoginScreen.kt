@@ -251,6 +251,25 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Botón de inicio de sesión con GitHub
+            OutlinedButton(
+                onClick = {
+                    viewModel.limpiarEstado()
+                    val activity = context as? android.app.Activity
+                    if (activity != null) {
+                        viewModel.iniciarSesionConGitHub(activity)
+                    }
+                },
+                enabled = !cargando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text("Continuar con GitHub")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             TextButton(
                 onClick = onIrARegistro,
                 enabled = !cargando

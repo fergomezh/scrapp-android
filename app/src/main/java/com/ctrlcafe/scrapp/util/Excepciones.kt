@@ -37,8 +37,9 @@ class EntradaAgotadaException : Exception("Entrada cerrada; la aplicación final
 class CredencialesInvalidasException :
     ScrappException("Correo o contraseña incorrectos.")
 
-class CorreoEnUsoException :
-    ScrappException("Ya existe una cuenta con ese correo.")
+class CorreoEnUsoException(
+    mensaje: String = "Este correo ya está registrado con otro proveedor. Inicia sesión con tu método original."
+) : ScrappException(mensaje)
 
 class ContrasenaDebilException :
     ScrappException("La contraseña debe tener al menos 6 caracteres.")

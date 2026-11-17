@@ -1,15 +1,20 @@
 package com.ctrlcafe.scrapp.servicio
 
+import com.ctrlcafe.scrapp.modelo.CausaMerma
 import com.ctrlcafe.scrapp.modelo.Lote
 import com.ctrlcafe.scrapp.modelo.Merma
 import com.ctrlcafe.scrapp.modelo.Producto
-import com.ctrlcafe.scrapp.repositorio.LoteRepositorio
-import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
-import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
 import com.ctrlcafe.scrapp.repositorio.Repositorio
 import com.ctrlcafe.scrapp.util.Logger
 import com.ctrlcafe.scrapp.util.NivelLog
 import java.time.LocalDate
+
+data class MermaPorCausa(
+    val causa: CausaMerma,
+    val unidadesPerdidas: Double,
+    val costoPerdida: Double,
+    val porcentajeDelTotal: Double
+)
 
 /**
  * Impacto financiero de las mermas.
@@ -17,9 +22,6 @@ import java.time.LocalDate
  * Todo cálculo de pérdida usa `Merma.costoUnitarioCongelado`, nunca el costo
  * actual del producto: si el administrador cambia el precio, el histórico no
  * se distorsiona.
- *
- * Costo de producción de un periodo = Suma (cantidadInicial * costoUnitario) de los
- * lotes ingresados en ese periodo.
  */
 class MotorFinanciero(
     private val mermaRepositorio: Repositorio<Merma>,
@@ -42,11 +44,6 @@ class MotorFinanciero(
         return loteRepositorio.listar().ingresadosEntre(desde, hasta).costoProduccion()
     }
 
-    /**
-     * Índice de merma = (costoMermas / costoProduccionTotal) * 100.
-     * Sin producción en el periodo devuelve 0.0 y lo registra en el log, para no
-     * mostrar `NaN` ni `Infinity` en consola.
-     */
     fun indiceMerma(desde: LocalDate, hasta: LocalDate): Double {
         val produccion = costoProduccion(desde, hasta)
         if (produccion == 0.0) {
@@ -79,6 +76,24 @@ class MotorFinanciero(
             }
             .sortedByDescending { it.costoPerdida }
             .take(top)
+    }
+
+    /** Agrupa las mermas del periodo por cada CausaMerma para la tercera gráfica de gerencia. */
+    fun desglosePorCausa(desde: LocalDate, hasta: LocalDate): List<MermaPorCausa> {
+        validarRango(desde, hasta)
+        val mermas = mermaRepositorio.listar().enRango(desde, hasta)
+        val costoTotal = mermas.costoTotal()
+
+        return CausaMerma.entries.map { causa ->
+            val delGrupo = mermas.filter { it.causa == causa }
+            val costo = delGrupo.costoTotal()
+            MermaPorCausa(
+                causa = causa,
+                unidadesPerdidas = delGrupo.unidadesTotales(),
+                costoPerdida = costo,
+                porcentajeDelTotal = if (costoTotal > 0.0) costo.porcentajeDe(costoTotal) else 0.0
+            )
+        }
     }
 
     /** Cierre financiero completo del periodo, listo para el reporte (RF4). */

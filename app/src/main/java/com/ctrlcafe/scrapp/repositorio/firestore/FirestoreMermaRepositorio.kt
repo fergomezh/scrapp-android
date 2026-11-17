@@ -55,17 +55,31 @@ class FirestoreMermaRepositorio : Repositorio<Merma>, RegistroMermaAtomico {
      * dejan al operativo leer mermas ajenas, y una consulta sin ese filtro se rechaza
      * completa. Con `null` (administrador) se escucha toda la colección.
      * El orden por fecha se hace en el cliente para no requerir un índice compuesto.
+     *
+     * La escucha solo está abierta mientras [uidSesion] tiene la sesión: se cierra al salir
+     * y se reabre al volver a entrar. Así el historial no queda roto cuando la pestaña se
+     * restaura tras cerrar e iniciar sesión, ni cuando el perfil de una cuenta nueva aún no
+     * existe (PERMISSION_DENIED), caso en el que se reintenta con [EscuchaFirestore].
      */
-    fun observarMermas(usuarioId: String?): Flow<List<Merma>> = callbackFlow {
+    fun observarMermas(usuarioId: String?, uidSesion: String): Flow<List<Merma>> = callbackFlow {
         val consulta = if (usuarioId == null) coleccion else coleccion.whereEqualTo("usuarioId", usuarioId)
-        val listener = consulta.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
-            }
-            trySend(snapshot?.documents?.map { it.aMerma() }.orEmpty())
+        val escuchaHistorial = EscuchaFirestore<QuerySnapshot>("historial de mermas") { snapshot ->
+            trySend(snapshot.documents.map { it.aMerma() })
         }
-        awaitClose { listener.remove() }
+        val auth = FirebaseAuth.getInstance()
+        val alCambiarSesion = FirebaseAuth.AuthStateListener { estado ->
+            if (estado.currentUser?.uid == uidSesion) {
+                escuchaHistorial.iniciar(consulta)
+            } else {
+                escuchaHistorial.detener()
+            }
+        }
+        // Se llama de inmediato con el estado actual y luego en cada cambio de sesión
+        auth.addAuthStateListener(alCambiarSesion)
+        awaitClose {
+            auth.removeAuthStateListener(alCambiarSesion)
+            escuchaHistorial.detener()
+        }
     }
 
     override fun listar(): List<Merma> = _mermasFlow.value

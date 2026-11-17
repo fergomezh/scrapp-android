@@ -1,70 +1,91 @@
 # Scrapp — Control de mermas (Android)
 
+[![Licencia: CC BY-NC 4.0](https://img.shields.io/badge/Licencia-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/deed.es)
+
 Aplicación Android desarrollada con **Jetpack Compose** y **Firebase** para el control de mermas de una cafetería: registra lotes y su caducidad, registra las mermas con foto de evidencia y recalcula al instante la producción sugerida y las pérdidas, sincronizado en tiempo real entre dispositivos.
 
-**DSM941 G01T** · Proyecto de cátedra · **Etapa 3, Avance 2 (Foro 2: integración con Firebase)** · Grupo **CTRL+CAFE**
+**DSM941 G01T** · Proyecto de cátedra · **Entrega final** · Grupo **CTRL+CAFE**
 
 ---
 
 ## Entregables
 
-Entrega final de la Etapa 3, Avance 2. El video muestra la defensa de esta fase: el funcionamiento de la app con Firebase y la explicación de la implementación.
-
 | Entregable | Enlace |
 |---|---|
-| Video de defensa (Avance 2) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAVO57cR7w0SL5qbK7zvT3ZAXCmdZaLviyN1HozuEAVzzE?e=F1mvdr) |
-| Documento de investigación sobre Firebase (APA 7) | [docs/Etapa 3 Avance 2 - Investigacion Firebase - CTRL Cafe.pdf](docs/Etapa%203%20Avance%202%20-%20Investigacion%20Firebase%20-%20CTRL%20Cafe.pdf) |
-| Video de demostración (Avance 1) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAFBJLpUXw9TYQKUIsiwnp9ASbncvHH1yIk-juFE1IHpDw?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=S7AGCz) |
-| Documento de investigación sobre Jetpack Compose (Avance 1) | [docs/Etapa 3 Avance 1 - Investigacion Jetpack Compose - CTRL Cafe.pdf](docs/Etapa%203%20Avance%201%20-%20Investigacion%20Jetpack%20Compose%20-%20CTRL%20Cafe.pdf) |
+| Mockups en Figma | [Ver sección Mockups](#mockups) · _Pendiente: enlace público de Figma_ |
+| Licencia | [CC BY-NC 4.0](LICENSE) |
 | Código fuente | Este repositorio |
+| Documento de investigación sobre Firebase (Avance 2, APA 7) | [docs/Etapa 3 Avance 2 - Investigacion Firebase - CTRL Cafe.pdf](docs/Etapa%203%20Avance%202%20-%20Investigacion%20Firebase%20-%20CTRL%20Cafe.pdf) |
+| Documento de investigación sobre Jetpack Compose (Avance 1) | [docs/Etapa 3 Avance 1 - Investigacion Jetpack Compose - CTRL Cafe.pdf](docs/Etapa%203%20Avance%201%20-%20Investigacion%20Jetpack%20Compose%20-%20CTRL%20Cafe.pdf) |
+| Video de defensa (Avance 2) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAVO57cR7w0SL5qbK7zvT3ZAXCmdZaLviyN1HozuEAVzzE?e=F1mvdr) |
+| Video de demostración (Avance 1) | [Ver video en SharePoint](https://udbedu-my.sharepoint.com/:v:/g/personal/gh251230_alumno_udb_edu_sv/IQAFBJLpUXw9TYQKUIsiwnp9ASbncvHH1yIk-juFE1IHpDw?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=S7AGCz) |
 | Versión de consola (Etapa 2) | [fergomezh/mermas-scrapp](https://github.com/fergomezh/mermas-scrapp) |
 
 ## Integrantes
 
 | Nombre | Carné |
 |---|---|
-| Victor Emmanuel Velasco Martínez | VM251307 |
 | Fernando José Gómez Hernández | GH251230 |
+| Victor Emmanuel Velasco Martínez | VM251307 |
 | José Eduardo Aquino Medrano | AM252078 |
 | William Eduardo Montano Aguilar | MA251192 |
+
+Cada integrante trabajó en su propia rama y envió sus cambios a `dev` por pull request; `main` solo recibe versiones revisadas.
+
+---
+
+## Mockups
+
+Los mockups finales se diseñaron en Figma y se exportaron a [`docs/mockups/`](docs/mockups/).
+
+<!-- Reemplazar por las imágenes exportadas, por ejemplo:
+| Login | Dashboard | Monitor de lotes | Panel de gerencia |
+|---|---|---|---|
+| ![Login](docs/mockups/login.png) | ![Dashboard](docs/mockups/dashboard.png) | ![Lotes](docs/mockups/lotes.png) | ![Gerencia](docs/mockups/gerencia.png) |
+-->
+
+_Pendiente: imágenes y enlace público al archivo de Figma._
 
 ---
 
 ## Funcionalidades
 
-### Requerimientos del Avance 2 (Foro 2)
+### Requerimientos de la entrega final
 
 | # | Requerimiento | Implementación |
 |---|---|---|
-| 1 | Autenticación con Firebase (correo y Google) | Login y registro por correo, "Continuar con Google" (Credential Manager), recuperación de contraseña, perfil `OPERATIVO` creado al primer ingreso con Google, sesión persistente, cierre de sesión si el administrador desactiva la cuenta y limpieza de la sesión de Google al salir |
+| 1 | Autenticación con correo y redes sociales | Login y registro por correo, "Continuar con Google" (Credential Manager) y "Continuar con GitHub" (`OAuthProvider`), recuperación de contraseña, perfil `OPERATIVO` creado al primer ingreso social, aviso si el correo ya está registrado con otro proveedor, sesión persistente y cierre de sesión automático si el administrador desactiva la cuenta |
 | 2 | Persistencia en Firestore asociada al usuario | Colecciones `usuarios`, `productos`, `lotes`, `ventas`, `mermas` y `configuracion`; cada registro guarda `creadoPor` / `usuarioId` y la fecha del servidor. Reglas de seguridad por rol y listeners en tiempo real |
-| 3 | Módulos secundarios | Evidencia fotográfica (CameraX o galería, subida a Cloudinary), gráficas de gerencia (Vico), gestión de usuarios, catálogo de productos y configuración de motores sincronizada |
-| 4 | Historial de registros | Historial de mermas (el operativo ve las suyas, el administrador todas) con filtros por fecha, producto y causa y detalle con la foto; historial de lotes agotados y vencidos |
-| 5 | Documento sobre Firebase (APA 7) | Ver la tabla de entregables |
+| 3 | Roles | `OPERATIVO` y `ADMINISTRADOR`, con pestañas, pantallas y permisos de Firestore distintos |
+| 4 | Módulos secundarios | Evidencia fotográfica (CameraX o galería, subida a Cloudinary), gráficas de gerencia (Vico), gestión de usuarios, catálogo de productos, configuración de motores sincronizada y exportación del resumen en CSV |
+| 5 | Historial de registros | Historial de mermas (el operativo ve las suyas, el administrador todas) con filtros por fecha, producto y causa y detalle con la foto; historial de lotes agotados y vencidos |
+| 6 | Arquitectura MVC | Modelo, controlador (ViewModels) y vista (Compose) separados; ver [Arquitectura](#arquitectura) |
+| 7 | Licencia Creative Commons | [CC BY-NC 4.0](LICENSE) |
 
 ### Resumen técnico
 
 | Área | Implementación |
 |---|---|
-| Autenticación | Firebase Authentication (correo y Google), rol en `usuarios/{uid}`, mensajes de error en español |
+| Autenticación | Firebase Authentication (correo, Google y GitHub), rol en `usuarios/{uid}`, mensajes de error en español |
 | Persistencia | Cloud Firestore con copia en memoria + `addSnapshotListener` + `StateFlow`, modo sin conexión y aviso global cuando no hay red |
 | Tiempo real | Monitor de lotes, dashboard, historial, panel de gerencia y configuración de motores se actualizan solos al cambiar los datos en otro dispositivo |
 | Evidencia fotográfica | CameraX o galería, compresión en el dispositivo y subida sin firma a Cloudinary con barra de progreso |
-| Gráficas | Pérdida diaria y productos críticos con Vico en el Panel de gerencia |
+| Gráficas | Pérdida diaria, productos críticos y mermas por causa con Vico en el Panel de gerencia, filtrables por rango de fechas |
+| Reportes | Exportación del resumen de mermas a CSV para compartirlo desde el Panel de gerencia |
 | Navegación | Navigation Compose, barra inferior según el rol y rutas de administración protegidas |
 | Validaciones | Login, registro, ingreso de lote, registro de merma, catálogo y configuración, con el error bajo cada campo |
 
 ### Pantallas
 
 - **Login y Registro:** validación de correo y contraseña, mensajes de error en español y mostrar/ocultar contraseña. Todo usuario nuevo se crea con rol Operativo.
-- **Inicio con Google y recuperación de contraseña:** botón "Continuar con Google" y envío del correo de restablecimiento desde el login.
+- **Inicio con Google, GitHub y recuperación de contraseña:** botones "Continuar con Google" y "Continuar con GitHub", y envío del correo de restablecimiento desde el login. Si el correo ya existe con otro proveedor, la app indica con cuál iniciar sesión.
 - **Dashboard de Producción:** cantidad sugerida para mañana por producto, con demanda base, margen aplicado y tasa de merma de los últimos 14 días.
 - **Monitor de Lotes:** lotes ordenados por urgencia, con semáforo de caducidad (Verde, Amarillo, Rojo, Vencido) y filtros por estado. Desde un lote vencido se abre el registro de merma con el producto y el lote ya elegidos.
 - **Ingreso de Lote:** calcula la fecha de caducidad antes de guardar y autocompleta el costo según el producto.
 - **Registro de Merma:** producto, lote, cantidad, causa y foto de evidencia (cámara o galería). La foto se sube a Cloudinary con barra de progreso y la merma no se registra hasta tener la URL.
 - **Historial (los dos roles):** mermas con filtros por fecha, producto y causa, detalle con la foto completa, e historial de lotes agotados y vencidos con lo que se perdió de cada uno.
 - **Catálogo de Productos (solo administrador):** crear, editar y desactivar productos. Se abre desde el Panel de Gerencia.
-- **Panel de Gerencia (solo administrador):** pérdida del día, pérdida del mes, índice de merma, top 5 de productos críticos y gráficas de pérdida diaria y de productos críticos.
+- **Panel de Gerencia (solo administrador):** pérdida del día, pérdida del mes, índice de merma, top 5 de productos críticos, filtro por rango de fechas, gráficas de pérdida diaria, productos críticos y mermas por causa, y botón para exportar el resumen en CSV.
 - **Gestión de Usuarios (solo administrador):** cambiar el rol y activar o desactivar usuarios. Se abre con el icono de personas del Panel de Gerencia.
 - **Configuración de Motores (solo administrador):** ajustar el margen de seguridad de la proyección y los umbrales del semáforo. Se guarda en `configuracion/motores` y se aplica en todos los dispositivos al instante. Se abre con el icono de ajustes del Panel de Gerencia.
 
@@ -129,6 +150,15 @@ Para que "Continuar con Google" funcione en un equipo:
    ```bash
    keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
    ```
+
+### Inicio con GitHub
+
+"Continuar con GitHub" usa `OAuthProvider("github.com")` de Firebase Auth, que abre el inicio de sesión de GitHub en una pestaña del navegador y vuelve a la app. Para que funcione en otro proyecto de Firebase:
+
+1. En GitHub → Settings → Developer settings → *OAuth Apps*, crear una app cuya *Authorization callback URL* sea la que muestra Firebase (`https://<proyecto>.firebaseapp.com/__/auth/handler`).
+2. En Firebase Console → Authentication → *Sign-in method*, habilitar GitHub con el *Client ID* y el *Client secret* de esa app. El secret queda solo en Firebase, nunca en el repositorio.
+
+Si el correo de la cuenta de GitHub ya está registrado con correo y contraseña o con Google, Firebase rechaza el ingreso (`FirebaseAuthUserCollisionException`) y la app pide entrar con el método original.
 
 ### Evidencia fotográfica (Cloudinary)
 
@@ -218,7 +248,7 @@ app/src/main/java/com/ctrlcafe/scrapp/
 ### Modelo de datos
 
 ```
-usuarios/{uid}          nombre, correo, rol, activo, proveedor ("password" | "google"), creadoEn
+usuarios/{uid}          nombre, correo, rol, activo, proveedor ("password" | "google" | "github"), creadoEn
 productos/{id}          nombre, categoria, costoUnitario, precioVenta, unidadMedida, activo, creadoPor, actualizadoEn
 lotes/{id}              productoId, cantidadInicial, cantidadDisponible, costoUnitario,
                         fechaIngreso, vidaUtilDias, fechaCaducidad, creadoPor, creadoEn
@@ -241,8 +271,8 @@ Las reglas están en [`firestore.rules`](firestore.rules), fuera de modo test:
 |---|---|---|
 | `usuarios` | Lee su documento; crea su perfil solo como `OPERATIVO`; cambia solo su `nombre` | Lee y edita todos (rol, activo) |
 | `productos`, `configuracion` | Solo lectura | Lectura y escritura |
-| `lotes` | Lee todos; crea con `creadoPor` = su uid; solo puede **disminuir** `cantidadDisponible` | Lectura y escritura |
-| `mermas` | Lee y crea solo las suyas (`usuarioId` = su uid) | Lee todas; edita y borra |
+| `lotes` | Lee todos; crea con `creadoPor` = su uid y cantidades coherentes; solo puede **disminuir** `cantidadDisponible`, sin bajar de 0 | Lectura y escritura |
+| `mermas` | Lee y crea solo las suyas (`usuarioId` = su uid), con cantidad mayor a 0 | Lee todas; edita y borra |
 | `ventas` | Lee; solo puede crear ventas simuladas `SIM-*` | Lectura y escritura |
 
 Un usuario con `activo == false` no lee ni escribe nada. Después de cambiar las reglas hay que publicarlas:
@@ -254,3 +284,15 @@ firebase deploy --only firestore:rules
 ## Registro de errores
 
 `Logger` escribe en Logcat (etiqueta `Scrapp`) y en `filesDir/logs/errores.log`, que se puede revisar desde **Device Explorer** en `/data/data/com.ctrlcafe.scrapp/files/logs/`.
+
+## Seguridad
+
+- **Reglas de Firestore fuera de modo test**, por rol y por dueño del registro, con validación de cantidades (ver la tabla de reglas).
+- **Sin secretos en el repositorio.** `google-services.json` solo trae identificadores públicos del proyecto (la API key de Firebase no es un secreto: la protegen las reglas y las restricciones de la key en Google Cloud). Cloudinary usa un *upload preset* sin firma, así que el API secret nunca llega a la app. El *client secret* de GitHub vive solo en Firebase Console.
+- **Cierre de sesión completo:** `FirebaseAuth.signOut()` más `clearCredentialState()` de Credential Manager para que Google no vuelva a entrar solo, y los listeners de Firestore se cierran al cambiar de usuario (`SesionFirestore`).
+- **Cuentas desactivadas:** un listener sobre `usuarios/{uid}` cierra la sesión en cuanto el administrador desactiva la cuenta, y las reglas le niegan toda lectura y escritura.
+- **Sin respaldo automático** (`android:allowBackup="false"`) para que la sesión y el log de errores no salgan del dispositivo por un backup.
+
+## Licencia
+
+Este proyecto está bajo la licencia [Creative Commons Atribución-NoComercial 4.0 Internacional (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/deed.es). Se puede compartir y adaptar dando crédito a CTRL+CAFE y sin fines comerciales. Ver [LICENSE](LICENSE).

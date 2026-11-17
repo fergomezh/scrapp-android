@@ -151,7 +151,9 @@ fun ScrappNavHost(
 
         composable(RutasBottom.Mermas.route) {
             RegistroMermaScreen(
-                viewModel = viewModel(),
+                // Clave por usuario: la pestaña se restaura tras cerrar sesión y, sin clave,
+                // el siguiente usuario vería el formulario y la foto que dejó el anterior.
+                viewModel = viewModel(key = "registro-merma-${usuarioActual?.uid}"),
                 usuarioId = usuarioActual?.uid.orEmpty(),
                 nombreUsuario = usuarioActual?.nombre.orEmpty()
             )

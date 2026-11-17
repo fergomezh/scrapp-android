@@ -32,7 +32,13 @@ import com.ctrlcafe.scrapp.vista.componentes.TopBarScrapp
 fun HistorialScreen(
     usuario: PerfilUsuario?,
     modifier: Modifier = Modifier,
-    viewModel: HistorialViewModel = viewModel(factory = HistorialViewModel.provideFactory(usuario))
+    // La barra inferior restaura el estado de cada pestaña (restoreState) aun después de
+    // cerrar sesión. Sin esta clave, otro usuario reutilizaría el ViewModel del anterior
+    // (p. ej. el del administrador, que consulta todas las mermas) y Firestore lo rechazaría.
+    viewModel: HistorialViewModel = viewModel(
+        key = "historial-${usuario?.uid}-${usuario?.rol}",
+        factory = HistorialViewModel.provideFactory(usuario)
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var pestana by rememberSaveable { mutableIntStateOf(0) }

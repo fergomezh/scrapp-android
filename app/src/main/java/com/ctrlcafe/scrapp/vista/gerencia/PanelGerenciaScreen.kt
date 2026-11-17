@@ -41,6 +41,13 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+
+/** Etiquetas 1, 2, 3… en el eje X para que coincidan con las leyendas numeradas. */
+private val ejeDesdeUno = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { valor, _ ->
+    (valor.toInt() + 1).toString()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +79,9 @@ fun PanelGerenciaScreen(
     val indiceMerma = viewModel.indiceMerma.value
     val productosCriticos = viewModel.productosCriticos.value
     val desgloseCausas = viewModel.desgloseCausas.value
+    val detalleCriticos = viewModel.detalleCriticos.value
+    // Vico numera el eje X desde 0; las leyendas numeran desde 1
+    val ejeNumerado = rememberBottomAxis(valueFormatter = ejeDesdeUno)
 
     val modeloLineas = viewModel.modeloLineasCostoMes.value
     val modeloBarras = viewModel.modeloBarrasTopProductos.value
@@ -231,7 +241,7 @@ fun PanelGerenciaScreen(
                             chart = lineChart(),
                             model = modeloLineas,
                             startAxis = rememberStartAxis(),
-                            bottomAxis = rememberBottomAxis(),
+                            bottomAxis = ejeNumerado,
                             modifier = Modifier.height(160.dp)
                         )
                     }
@@ -252,9 +262,30 @@ fun PanelGerenciaScreen(
                             chart = columnChart(),
                             model = modeloBarras,
                             startAxis = rememberStartAxis(),
-                            bottomAxis = rememberBottomAxis(),
+                            bottomAxis = ejeNumerado,
                             modifier = Modifier.height(160.dp)
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        // Leyenda: el número coincide con el orden de las barras
+                        detalleCriticos.forEachIndexed { index, item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${index + 1}. ${item.nombreProducto}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextoSecundario
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "$%.2f (%.0f%%)", item.costoPerdida, item.porcentajeDelTotal),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -273,7 +304,7 @@ fun PanelGerenciaScreen(
                             chart = columnChart(),
                             model = modeloCausas,
                             startAxis = rememberStartAxis(),
-                            bottomAxis = rememberBottomAxis(),
+                            bottomAxis = ejeNumerado,
                             modifier = Modifier.height(160.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))

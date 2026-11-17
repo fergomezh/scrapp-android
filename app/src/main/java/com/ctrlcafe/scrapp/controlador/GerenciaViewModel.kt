@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import com.ctrlcafe.scrapp.repositorio.ContenedorDatos
 import com.ctrlcafe.scrapp.servicio.MermaPorCausa
 import com.ctrlcafe.scrapp.servicio.MotorFinanciero
+import com.ctrlcafe.scrapp.servicio.ProductoCritico
 import com.ctrlcafe.scrapp.util.ExportadorReporte
 import com.ctrlcafe.scrapp.util.Logger
 import com.patrykandpatrick.vico.core.entry.ChartEntryModel
@@ -35,6 +36,10 @@ class GerenciaViewModel(
 
     private val _productosCriticos = mutableStateOf<List<Pair<String, Float>>>(emptyList())
     val productosCriticos: State<List<Pair<String, Float>>> = _productosCriticos
+
+    /** Top 5 con costo y porcentaje, para la leyenda de la gráfica de desperdicio crítico. */
+    private val _detalleCriticos = mutableStateOf<List<ProductoCritico>>(emptyList())
+    val detalleCriticos: State<List<ProductoCritico>> = _detalleCriticos
 
     private val _desgloseCausas = mutableStateOf<List<MermaPorCausa>>(emptyList())
     val desgloseCausas: State<List<MermaPorCausa>> = _desgloseCausas
@@ -76,6 +81,7 @@ class GerenciaViewModel(
                 it.nombreProducto to (it.porcentajeDelTotal / 100.0).toFloat()
             }
             _productosCriticos.value = criticosMapeados
+            _detalleCriticos.value = resumen.criticos
 
             val diasRango = ChronoUnit.DAYS.between(desde, hasta).coerceAtMost(13L)
             val inicioSerie = hasta.minusDays(diasRango)

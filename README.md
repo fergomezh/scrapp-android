@@ -12,7 +12,7 @@ Aplicación Android desarrollada con **Jetpack Compose** y **Firebase** para el 
 
 | Entregable | Enlace |
 |---|---|
-| Mockups en Figma | [Ver sección Mockups](#mockups) · _Pendiente: enlace público de Figma_ |
+| Mockups en Figma | [Ver archivo en Figma](https://www.figma.com/design/ylIz1NdYZXLlxBb717Zlr4/Scrap-app-de-control-de-mermas?node-id=0-1&t=bGEomtxJHwGZVLxZ-1) |
 | Licencia | [CC BY-NC 4.0](LICENSE) |
 | Código fuente | Este repositorio |
 | Documento de investigación sobre Firebase (Avance 2, APA 7) | [docs/Etapa 3 Avance 2 - Investigacion Firebase - CTRL Cafe.pdf](docs/Etapa%203%20Avance%202%20-%20Investigacion%20Firebase%20-%20CTRL%20Cafe.pdf) |
@@ -36,15 +36,7 @@ Cada integrante trabajó en su propia rama y envió sus cambios a `dev` por pull
 
 ## Mockups
 
-Los mockups finales se diseñaron en Figma y se exportaron a [`docs/mockups/`](docs/mockups/).
-
-<!-- Reemplazar por las imágenes exportadas, por ejemplo:
-| Login | Dashboard | Monitor de lotes | Panel de gerencia |
-|---|---|---|---|
-| ![Login](docs/mockups/login.png) | ![Dashboard](docs/mockups/dashboard.png) | ![Lotes](docs/mockups/lotes.png) | ![Gerencia](docs/mockups/gerencia.png) |
--->
-
-_Pendiente: imágenes y enlace público al archivo de Figma._
+Los mockups finales de la app se diseñaron en Figma: [Scrap - app de control de mermas](https://www.figma.com/design/ylIz1NdYZXLlxBb717Zlr4/Scrap-app-de-control-de-mermas?node-id=0-1&t=bGEomtxJHwGZVLxZ-1).
 
 ---
 

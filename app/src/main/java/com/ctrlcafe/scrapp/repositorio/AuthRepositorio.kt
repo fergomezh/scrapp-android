@@ -135,8 +135,6 @@ class AuthRepositorio(
                 throw UsuarioDesactivadoException()
             }
         }
-        // Datos de prueba: mermas propias para que el historial no aparezca vacío
-        SembradorDatos.sembrarMermasDemoSiNoTiene(perfil)
         SembradorDatos.programarVentasRecientes()
         perfil
     }
@@ -181,7 +179,6 @@ class AuthRepositorio(
                 throw UsuarioDesactivadoException()
             }
         }
-        SembradorDatos.sembrarMermasDemoSiNoTiene(perfil)
         SembradorDatos.programarVentasRecientes()
         perfil
     }

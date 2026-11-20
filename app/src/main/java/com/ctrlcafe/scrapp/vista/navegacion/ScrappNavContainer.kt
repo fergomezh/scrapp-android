@@ -18,7 +18,12 @@ import com.ctrlcafe.scrapp.vista.componentes.IndicadorSinConexion
 import com.ctrlcafe.scrapp.vista.componentes.rememberHayConexion
 
 // Pantallas donde no se muestra la barra inferior
-private val rutasSinBarra = setOf(Rutas.Splash.route, Rutas.Login.route, Rutas.Registro.route)
+private val rutasSinBarra = setOf(
+    Rutas.Splash.route,
+    Rutas.Login.route,
+    Rutas.Registro.route,
+    Rutas.RecuperarContrasena.route
+)
 
 @Composable
 fun ScrappNavContainer(
@@ -36,7 +41,9 @@ fun ScrappNavContainer(
 
     Scaffold(
         bottomBar = {
-            val conBarra = currentRoute != null && currentRoute !in rutasSinBarra
+            // La barra solo aparece con sesión iniciada, para no navegar sin autenticación
+            val conBarra = usuarioActual != null &&
+                currentRoute != null && currentRoute !in rutasSinBarra
             Column {
                 // Aviso global de modo sin conexión, encima de la barra inferior
                 IndicadorSinConexion(

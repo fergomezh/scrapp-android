@@ -6,8 +6,6 @@ import com.ctrlcafe.scrapp.repositorio.MermaRepositorio
 import com.ctrlcafe.scrapp.repositorio.ProductoRepositorio
 import com.ctrlcafe.scrapp.repositorio.UsuarioRepositorio
 import com.ctrlcafe.scrapp.repositorio.VentaRepositorio
-import com.ctrlcafe.scrapp.modelo.CausaMerma
-import com.ctrlcafe.scrapp.modelo.PerfilUsuario
 import com.ctrlcafe.scrapp.util.Logger
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -58,65 +56,6 @@ object SembradorDatos {
                 )
                 db.collection("configuracion").document("motores").set(configInicial)
             }
-        }
-    }
-
-    /**
-     * Mermas de ejemplo propias del usuario que inicia sesión con Google.
-     *
-     * Las reglas solo dejan al operativo leer las mermas con su `usuarioId`, y las del
-     * sembrado general son de "USR-02", así que una cuenta nueva vería su historial vacío.
-     * Si el usuario aún no tiene mermas, se le crean unas pocas sobre los lotes existentes.
-     * Son históricas (no descuentan existencias) y caen en el mes en curso.
-     * Nunca hace fallar el login: ante cualquier error o sin conexión solo se registra en el log.
-     */
-    suspend fun sembrarMermasDemoSiNoTiene(perfil: PerfilUsuario) {
-        try {
-            withTimeoutOrNull(TIEMPO_LIMITE_MS) {
-                val mermas = db.collection("mermas")
-                    .whereEqualTo("usuarioId", perfil.uid)
-                    .limit(1)
-                    .get().await()
-                if (!mermas.isEmpty) return@withTimeoutOrNull
-
-                val lotes = db.collection("lotes").get().await().documents
-                    .filter { (it.getDouble("cantidadInicial") ?: 0.0) > 0.0 && it.getString("productoId") != null }
-                    .sortedBy { it.id }
-                    .take(MERMAS_DEMO.size)
-                if (lotes.isEmpty()) {
-                    Logger.info(SembradorDatos::class.java, "Sin lotes en Firestore: no se siembran mermas demo")
-                    return@withTimeoutOrNull
-                }
-
-                val hoy = LocalDate.now()
-                val inicioMes = hoy.withDayOfMonth(1)
-                val prefijo = "DEMO-${perfil.uid.take(6).uppercase()}"
-                val escritura = db.batch()
-
-                lotes.forEachIndexed { i, doc ->
-                    val (diasAtras, causa) = MERMAS_DEMO[i]
-                    val cantidadInicial = doc.getDouble("cantidadInicial") ?: 0.0
-                    val datos = hashMapOf(
-                        "loteId" to doc.id,
-                        "productoId" to doc.getString("productoId").orEmpty(),
-                        "cantidad" to if (cantidadInicial >= 10.0) 2.0 else 1.0,
-                        "costoUnitarioCongelado" to (doc.getDouble("costoUnitario") ?: 0.0),
-                        "fecha" to maxOf(hoy.minusDays(diasAtras), inicioMes).aTimestamp(),
-                        "causa" to causa.name,
-                        "urlEvidencia" to "sin_evidencia.jpg",
-                        "usuarioId" to perfil.uid,
-                        "nombreUsuario" to perfil.nombre,
-                        "creadoEn" to FieldValue.serverTimestamp()
-                    )
-                    escritura.set(db.collection("mermas").document("$prefijo-${(i + 1).toString().padStart(2, '0')}"), datos)
-                }
-                // Sin await: offline queda en cola y el listener de mermas las muestra igual
-                escritura.commit()
-                Logger.info(SembradorDatos::class.java, "Mermas demo sembradas para ${perfil.uid}: ${lotes.size}")
-            } ?: Logger.info(SembradorDatos::class.java, "Tiempo agotado al sembrar mermas demo")
-        } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Logger.error(SembradorDatos::class.java, "No se pudieron sembrar mermas demo: ${e.message}", e)
         }
     }
 
@@ -226,14 +165,4 @@ object SembradorDatos {
     private val FORMATO_ID: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
 
     private const val TIEMPO_LIMITE_MS = 8_000L
-
-    // (días atrás, causa) de cada merma demo
-    private val MERMAS_DEMO = listOf(
-        0L to CausaMerma.NO_VENDIDO,
-        1L to CausaMerma.VENCIMIENTO,
-        2L to CausaMerma.DETERIORO_ALMACENAMIENTO,
-        3L to CausaMerma.ERROR_PREPARACION,
-        5L to CausaMerma.SOBREPRODUCCION,
-        7L to CausaMerma.VENCIMIENTO
-    )
 }
